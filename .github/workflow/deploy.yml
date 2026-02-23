@@ -3,7 +3,8 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches:
-      - main  # Cambia in 'master' se la tua branch principale si chiama così
+      - main
+      - master
 
 permissions:
   contents: write
@@ -27,10 +28,11 @@ jobs:
       - name: Build 🏗️
         run: npm run build
         env:
-          VITE_GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
 
       - name: Deploy 🚀
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dist
+
