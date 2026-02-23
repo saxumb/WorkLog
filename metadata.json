@@ -1,0 +1,7 @@
+{
+  "name": "WorkLog AI - Timesheet Master",
+  "description": "A professional timesheet application with PWA support for offline use, AI-powered reporting, and project tracking.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
