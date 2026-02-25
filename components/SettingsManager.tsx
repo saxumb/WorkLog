@@ -96,7 +96,7 @@ const SettingsManager: React.FC<SettingsManagerProps> = ({
               <div key={pa.id} className="flex items-center gap-4 p-4 bg-white border border-slate-100 rounded-2xl hover:border-slate-200 group transition-all">
                 <div className="px-2 py-1 bg-slate-100 text-slate-800 rounded text-[9px] font-black border border-slate-200 uppercase">{pa.code}</div>
                 <p className="text-xs font-medium text-slate-700 flex-1">{pa.description}</p>
-                <button onClick={() => onDeletePredefined(pa.id)} className="p-2 text-slate-200 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all"><Trash2 size={16} /></button>
+                <button onClick={() => onDeletePredefined(pa.id)} className="p-2 text-slate-400 md:text-slate-200 hover:text-rose-500 md:opacity-0 md:group-hover:opacity-100 transition-all"><Trash2 size={16} /></button>
               </div>
             ))}
             {predefinedActivities.length === 0 && (
