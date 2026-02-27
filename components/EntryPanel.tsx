@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Play, Square, Check, Sparkles, Loader2, History, Mic, MicOff, AlertCircle, Tag, Clock, CheckCheck } from 'lucide-react';
-import { Project, Activity, PredefinedActivity } from '../types';
+import { Project, Activity, PredefinedActivity, WeeklyWorkHours } from '../types';
 import { parseActivityInput } from '../services/geminiService';
 
 interface EntryPanelProps {
@@ -9,19 +9,30 @@ interface EntryPanelProps {
   activeActivity: Activity | null;
   activities: Activity[];
   predefinedActivities: PredefinedActivity[];
-  dailyWorkHours: number;
+  weeklyWorkHours: WeeklyWorkHours;
   onStart: (projectId: string, activityCode: string, description: string) => void;
   onStop: () => void;
   onManualAdd: (projectId: string, activityCode: string, description: string, date: string, durationSeconds: number) => void;
 }
 
-const EntryPanel: React.FC<EntryPanelProps> = ({ projects, activeActivity, activities, predefinedActivities, dailyWorkHours, onStart, onStop, onManualAdd }) => {
+const EntryPanel: React.FC<EntryPanelProps> = ({ projects, activeActivity, activities, predefinedActivities, weeklyWorkHours, onStart, onStop, onManualAdd }) => {
   const [mode, setMode] = useState<'manual' | 'smart' | 'timer'>('manual');
   const [projectId, setProjectId] = useState('');
   const [activityCode, setActivityCode] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  
+  const defaultDuration = useMemo(() => {
+    const d = new Date(date);
+    const dayName = d.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase() as keyof WeeklyWorkHours;
+    return weeklyWorkHours[dayName] || 8;
+  }, [date, weeklyWorkHours]);
+
   const [durationHours, setDurationHours] = useState(8); 
+
+  useEffect(() => {
+    setDurationHours(defaultDuration);
+  }, [defaultDuration]);
   const [smartInput, setSmartInput] = useState('');
   const [isParsing, setIsParsing] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -155,13 +166,13 @@ const EntryPanel: React.FC<EntryPanelProps> = ({ projects, activeActivity, activ
   return (
     <div className={`bg-white rounded-[2rem] p-1 shadow-sm border transition-all duration-500 overflow-hidden ${showSuccess ? 'border-emerald-500 animate-success-glow' : 'border-slate-200'}`}>
       <div className="flex flex-wrap p-1 bg-slate-100 rounded-3xl w-fit mb-2 mx-4 mt-4 gap-1">
-        <button onClick={() => setMode('manual')} className={`px-4 py-1.5 rounded-[20px] text-[11px] font-bold transition-all ${mode === 'manual' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}>
+        <button onClick={() => setMode('manual')} className={`px-4 py-1.5 rounded-[20px] text-[11px] font-bold transition-all ${mode === 'manual' ? 'text-indigo-600' : 'text-slate-500'}`}>
           Rapido
         </button>
-        <button onClick={() => setMode('smart')} className={`px-4 py-1.5 rounded-[20px] text-[11px] font-bold transition-all ${mode === 'smart' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}>
+        <button onClick={() => setMode('smart')} className={`px-4 py-1.5 rounded-[20px] text-[11px] font-bold transition-all ${mode === 'smart' ? 'text-indigo-600' : 'text-slate-500'}`}>
           Smart AI
         </button>
-        <button onClick={() => setMode('timer')} className={`px-4 py-1.5 rounded-[20px] text-[11px] font-bold transition-all ${mode === 'timer' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}>
+        <button onClick={() => setMode('timer')} className={`px-4 py-1.5 rounded-[20px] text-[11px] font-bold transition-all ${mode === 'timer' ? 'text-indigo-600' : 'text-slate-500'}`}>
           Timer
         </button>
       </div>

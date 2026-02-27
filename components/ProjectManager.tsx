@@ -1,33 +1,63 @@
 
-import React, { useState } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, Trash2, Edit2, X, Check } from 'lucide-react';
 import { Project } from '../types';
-import { COLORS } from '../constants';
 
 interface ProjectManagerProps {
   projects: Project[];
   onAdd: (project: Omit<Project, 'id'>) => void;
   onDelete: (id: string) => void;
+  onUpdate: (project: Project) => void;
 }
 
-const ProjectManager: React.FC<ProjectManagerProps> = ({ projects, onAdd, onDelete }) => {
+const ProjectManager: React.FC<ProjectManagerProps> = ({ projects, onAdd, onDelete, onUpdate }) => {
   const [name, setName] = useState('');
   const [client, setClient] = useState('');
-  const [selectedColor, setSelectedColor] = useState(COLORS[0]);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name || !client) return;
-    onAdd({ name, client, color: selectedColor });
+    
+    if (editingId) {
+      const existing = projects.find(p => p.id === editingId);
+      if (existing) {
+        onUpdate({ ...existing, name, client });
+      }
+      setEditingId(null);
+    } else {
+      onAdd({ name, client, color: '' }); // Color is handled randomly in App.tsx
+    }
+    
+    setName('');
+    setClient('');
+  };
+
+  const startEdit = (project: Project) => {
+    setEditingId(project.id);
+    setName(project.name);
+    setClient(project.client);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
     setName('');
     setClient('');
   };
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      <div>
-        <h2 className="text-xl font-bold text-slate-800">Nuova Commessa</h2>
-        <p className="text-xs text-slate-500">Crea e organizza i tuoi progetti di lavoro</p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-xl font-bold text-slate-800">{editingId ? 'Modifica Commessa' : 'Nuova Commessa'}</h2>
+          <p className="text-xs text-slate-500">Crea e organizza i tuoi progetti di lavoro</p>
+        </div>
+        {editingId && (
+          <button onClick={cancelEdit} className="p-2 text-slate-400 hover:text-slate-600 transition-colors">
+            <X size={20} />
+          </button>
+        )}
       </div>
 
       <div className="bg-white rounded-[2rem] p-6 border border-slate-200 shadow-sm">
@@ -55,47 +85,39 @@ const ProjectManager: React.FC<ProjectManagerProps> = ({ projects, onAdd, onDele
             </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest ml-1">Colore Identificativo</label>
-            <div className="flex flex-wrap gap-2.5">
-              {COLORS.map((color) => (
-                <button
-                  key={color}
-                  type="button"
-                  onClick={() => setSelectedColor(color)}
-                  className={`w-8 h-8 rounded-full ${color} transition-all transform hover:scale-110 flex items-center justify-center ${
-                    selectedColor === color ? 'ring-2 ring-offset-2 ring-indigo-400 scale-110' : ''
-                  }`}
-                />
-              ))}
-            </div>
-          </div>
-
           <button
             type="submit"
-            className="w-full md:w-auto px-8 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-2xl transition-all shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 text-sm"
+            className={`w-full md:w-auto px-8 py-3.5 ${editingId ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-indigo-600 hover:bg-indigo-700'} text-white font-bold rounded-2xl transition-all shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 text-sm`}
           >
-            <Plus size={18} />
-            AGGIUNGI COMMESSA
+            {editingId ? <Check size={18} /> : <Plus size={18} />}
+            {editingId ? 'SALVA MODIFICHE' : 'AGGIUNGI COMMESSA'}
           </button>
         </form>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {projects.map((project) => (
-          <div key={project.id} className="bg-white rounded-[1.5rem] p-5 border border-slate-200 shadow-sm hover:shadow-md transition-shadow relative group">
+          <div key={project.id} className={`bg-white rounded-[1.5rem] p-5 border ${editingId === project.id ? 'border-indigo-500 ring-1 ring-indigo-500' : 'border-slate-200'} shadow-sm hover:shadow-md transition-all relative group`}>
             <div className="flex items-center gap-3 mb-3">
               <div className={`w-3 h-3 rounded-full ${project.color} shadow-sm`}></div>
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{project.client}</span>
             </div>
-            <h3 className="text-lg font-bold text-slate-800 leading-tight">{project.name}</h3>
+            <h3 className="text-lg font-bold text-slate-800 leading-tight pr-12">{project.name}</h3>
             
-            <button
-              onClick={() => onDelete(project.id)}
-              className="absolute top-5 right-5 p-1.5 text-slate-300 hover:text-rose-500 transition-colors opacity-0 group-hover:opacity-100"
-            >
-              <Trash2 size={16} />
-            </button>
+            <div className="absolute top-5 right-5 flex items-center gap-1">
+              <button
+                onClick={() => startEdit(project)}
+                className="p-1.5 text-slate-400 md:text-slate-300 hover:text-indigo-600 transition-colors md:opacity-0 md:group-hover:opacity-100"
+              >
+                <Edit2 size={16} />
+              </button>
+              <button
+                onClick={() => onDelete(project.id)}
+                className="p-1.5 text-slate-400 md:text-slate-300 hover:text-rose-500 transition-colors md:opacity-0 md:group-hover:opacity-100"
+              >
+                <Trash2 size={16} />
+              </button>
+            </div>
           </div>
         ))}
         {projects.length === 0 && (

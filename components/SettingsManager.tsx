@@ -1,35 +1,49 @@
 
-import React, { useState, useRef, useEffect } from 'react';
-import { Clock, ListTodo, Plus, Trash2, Tag, Download, Upload, ShieldCheck, Save } from 'lucide-react';
-import { PredefinedActivity, Project, Activity } from '../types';
+import React, { useState, useRef, useMemo } from 'react';
+import { Clock, ListTodo, Plus, Trash2, Tag, Download, Upload, ShieldCheck, Save, ChevronDown, ChevronUp } from 'lucide-react';
+import { PredefinedActivity, Project, Activity, WeeklyWorkHours } from '../types';
 
 interface SettingsManagerProps {
-  dailyWorkHours: number;
+  weeklyWorkHours: WeeklyWorkHours;
   predefinedActivities: PredefinedActivity[];
   projects: Project[];
   activities: Activity[];
-  onUpdateDailyHours: (hours: number) => void;
+  onUpdateWeeklyHours: (hours: WeeklyWorkHours) => void;
   onAddPredefined: (pa: Omit<PredefinedActivity, 'id'>) => void;
   onDeletePredefined: (id: string) => void;
-  onImportFullData: (data: any) => void;
+  onImportFullData: (data: any, confirm: boolean) => void;
   onManualExport: () => void;
 }
 
+const DAYS_OF_WEEK: { key: keyof WeeklyWorkHours; label: string }[] = [
+  { key: 'monday', label: 'Lunedì' },
+  { key: 'tuesday', label: 'Martedì' },
+  { key: 'wednesday', label: 'Mercoledì' },
+  { key: 'thursday', label: 'Giovedì' },
+  { key: 'friday', label: 'Venerdì' },
+  { key: 'saturday', label: 'Sabato' },
+  { key: 'sunday', label: 'Domenica' },
+];
+
 const SettingsManager: React.FC<SettingsManagerProps> = ({ 
-  dailyWorkHours, predefinedActivities, projects, activities,
-  onUpdateDailyHours, onAddPredefined, onDeletePredefined, onImportFullData, onManualExport
+  weeklyWorkHours, predefinedActivities, projects, activities,
+  onUpdateWeeklyHours, onAddPredefined, onDeletePredefined, onImportFullData, onManualExport
 }) => {
   const [newCode, setNewCode] = useState('');
   const [newDesc, setNewDesc] = useState('');
-  const [hoursInput, setHoursInput] = useState(dailyWorkHours.toString());
+  const [isWeeklyHoursOpen, setIsWeeklyHoursOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => { if (parseFloat(hoursInput) !== dailyWorkHours) setHoursInput(dailyWorkHours.toString()); }, [dailyWorkHours]);
+  const totalWeeklyHours = useMemo(() => {
+    return (Object.values(weeklyWorkHours) as number[]).reduce((acc, curr) => acc + curr, 0);
+  }, [weeklyWorkHours]);
 
-  const handleHoursChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value; setHoursInput(val);
+  const handleDayHoursChange = (day: keyof WeeklyWorkHours, val: string) => {
     const parsed = parseFloat(val);
-    if (!isNaN(parsed)) onUpdateDailyHours(parsed); else if (val === '') onUpdateDailyHours(0);
+    onUpdateWeeklyHours({
+      ...weeklyWorkHours,
+      [day]: isNaN(parsed) ? 0 : parsed
+    });
   };
 
   const handleAddPredefined = () => {
@@ -42,7 +56,12 @@ const SettingsManager: React.FC<SettingsManagerProps> = ({
     const file = e.target.files?.[0]; if (!file) return;
     const reader = new FileReader();
     reader.onload = (event) => {
-      try { const data = JSON.parse(event.target?.result as string); if (confirm("Ripristinare i dati dal file di backup? Questa operazione sovrascriverà tutti i dati correnti.")) onImportFullData(data); } catch (err) { alert("File non valido."); }
+      try { 
+        const data = JSON.parse(event.target?.result as string); 
+        onImportFullData(data, true);
+      } catch (err) { 
+        alert("File non valido."); 
+      }
     };
     reader.readAsText(file); e.target.value = '';
   };
@@ -57,31 +76,51 @@ const SettingsManager: React.FC<SettingsManagerProps> = ({
       </div>
 
       <div className="grid gap-6">
-        {/* Daily Threshold Section */}
-        <div className="bg-white rounded-[2.5rem] p-8 border border-slate-200 shadow-sm flex flex-col md:flex-row items-center gap-6">
-          <div className="p-4 bg-indigo-50 text-indigo-600 rounded-[2rem]"><Clock size={32} /></div>
-          <div className="flex-1 w-full">
-            <div className="flex justify-between items-center mb-2">
-               <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest">Soglia Ore Giornaliere</h3>
-               <div className="flex items-center gap-2">
-                 <input 
-                   type="number" 
-                   min="0" 
-                   max="24" 
-                   step="0.5" 
-                   value={hoursInput} 
-                   onChange={handleHoursChange} 
-                   className="w-20 p-2 bg-slate-50 border border-slate-200 rounded-xl text-right font-black text-indigo-600 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all"
-                 />
-                 <span className="text-sm font-black text-slate-400 uppercase">h</span>
-               </div>
+        {/* Weekly Threshold Section */}
+        <div className="bg-white rounded-[2rem] p-6 border border-slate-200 shadow-sm space-y-4">
+          <div 
+            className="flex items-center justify-between cursor-pointer group"
+            onClick={() => setIsWeeklyHoursOpen(!isWeeklyHoursOpen)}
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl group-hover:bg-indigo-100 transition-colors"><Clock size={20} /></div>
+              <div>
+                <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest">Soglia Ore Settimanali</h3>
+                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">
+                  {isWeeklyHoursOpen ? 'Limite ore per giorno' : `Totale settimanale: ${totalWeeklyHours}h`}
+                </p>
+              </div>
             </div>
-            <p className="text-[10px] text-slate-400 mt-2 italic">Usata per calcolare gli straordinari nella Dashboard.</p>
+            <div className="text-slate-300 group-hover:text-indigo-600 transition-colors">
+              {isWeeklyHoursOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+            </div>
           </div>
+          
+          {isWeeklyHoursOpen && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2 animate-in fade-in zoom-in-95 duration-200">
+              {DAYS_OF_WEEK.map((day) => (
+                <div key={day.key} className="p-2.5 bg-slate-50 rounded-xl border border-slate-100 flex flex-col gap-1">
+                  <label className="text-[9px] font-black text-slate-400 uppercase tracking-tighter leading-none truncate">{day.label.substring(0, 3)}</label>
+                  <div className="flex items-center gap-1">
+                    <input 
+                      type="number" 
+                      min="0" 
+                      max="24" 
+                      step="0.5" 
+                      value={weeklyWorkHours[day.key]} 
+                      onChange={(e) => handleDayHoursChange(day.key, e.target.value)} 
+                      className="w-full p-1 bg-white border border-slate-200 rounded-lg text-right font-black text-indigo-600 outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all text-[11px]"
+                    />
+                    <span className="text-[8px] font-black text-slate-400 uppercase">h</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Predefined Activities */}
-        <div className="bg-white rounded-[2.5rem] p-8 border border-slate-200 shadow-sm space-y-6">
+        <div className="bg-white rounded-[2rem] p-6 border border-slate-200 shadow-sm space-y-4">
           <div className="flex items-center gap-3">
             <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl"><ListTodo size={20} /></div>
             <div><h3 className="text-sm font-bold text-slate-800 uppercase">Glossario Attività</h3><p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Modelli riutilizzabili</p></div>
@@ -109,7 +148,7 @@ const SettingsManager: React.FC<SettingsManagerProps> = ({
         </div>
 
         {/* Local Backup Section */}
-        <div className="bg-white rounded-[2.5rem] p-8 border border-slate-200 shadow-sm space-y-6">
+        <div className="bg-white rounded-[2rem] p-6 border border-slate-200 shadow-sm space-y-4">
           <div className="flex items-center gap-4">
              <div className="p-3 bg-amber-50 text-amber-600 rounded-2xl"><ShieldCheck size={24} /></div>
              <div>

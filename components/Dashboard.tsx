@@ -1,20 +1,20 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Activity, Project } from '../types';
+import { Activity, Project, WeeklyWorkHours } from '../types';
 import { Zap, Pencil, Trash2, Sparkles, Loader2, Clock, History, ClipboardList, Target } from 'lucide-react';
 import { summarizeWork } from '../services/geminiService';
 
 interface DashboardProps {
   activities: Activity[];
   projects: Project[];
-  dailyWorkHours: number;
+  weeklyWorkHours: WeeklyWorkHours;
   onDeleteActivity: (id: string) => void;
   onEditActivity: (activity: Activity) => void;
 }
 
 type RangePreset = 'today' | 'week' | '30days' | 'month' | 'custom';
 
-const Dashboard: React.FC<DashboardProps> = ({ activities, projects, dailyWorkHours, onDeleteActivity, onEditActivity }) => {
+const Dashboard: React.FC<DashboardProps> = ({ activities, projects, weeklyWorkHours, onDeleteActivity, onEditActivity }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [report, setReport] = useState<string | null>(null);
   const [preset, setPreset] = useState<RangePreset>('month');
@@ -60,10 +60,17 @@ const Dashboard: React.FC<DashboardProps> = ({ activities, projects, dailyWorkHo
       const date = a.startTime.split('T')[0];
       dayMap.set(date, (dayMap.get(date) || 0) + a.durationSeconds / 3600);
     });
+    
     let overtime = 0;
-    dayMap.forEach(hours => { if (hours > dailyWorkHours) overtime += (hours - dailyWorkHours); });
+    dayMap.forEach((hours, dateStr) => {
+      const d = new Date(dateStr);
+      const dayName = d.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase() as keyof WeeklyWorkHours;
+      const limit = weeklyWorkHours[dayName];
+      if (hours > limit) overtime += (hours - limit);
+    });
+    
     return { totalHours: totalSeconds / 3600, overtime, sessions: filteredActivities.length };
-  }, [filteredActivities, dailyWorkHours]);
+  }, [filteredActivities, weeklyWorkHours]);
 
   const handleGenerateReport = async () => {
     setIsGenerating(true);
@@ -206,7 +213,11 @@ const Dashboard: React.FC<DashboardProps> = ({ activities, projects, dailyWorkHo
                   <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">{formatDateLabel(group.date)}</h4>
                   <div className="flex items-center gap-2">
                     <span className="text-[10px] font-bold text-slate-400 uppercase">Totale:</span>
-                    <span className={`text-[11px] font-black px-3 py-1 rounded-full border ${group.totalSeconds / 3600 > dailyWorkHours ? 'bg-amber-50 text-amber-600 border-amber-100' : 'bg-slate-50 text-slate-600 border-slate-100'}`}>
+                    <span className={`text-[11px] font-black px-3 py-1 rounded-full border ${(() => {
+                      const d = new Date(group.date);
+                      const dayName = d.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase() as keyof WeeklyWorkHours;
+                      return group.totalSeconds / 3600 > weeklyWorkHours[dayName] ? 'bg-amber-50 text-amber-600 border-amber-100' : 'bg-slate-50 text-slate-600 border-slate-100';
+                    })()}`}>
                       {formatDuration(group.totalSeconds)}
                     </span>
                   </div>
