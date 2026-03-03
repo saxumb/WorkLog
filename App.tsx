@@ -25,16 +25,31 @@ const App: React.FC = () => {
   
   // Data State
   const [projects, setProjects] = useState<Project[]>(() => {
-    const saved = localStorage.getItem('wl_projects');
-    return saved ? JSON.parse(saved) : INITIAL_PROJECTS;
+    try {
+      const saved = localStorage.getItem('wl_projects');
+      return saved ? JSON.parse(saved) : INITIAL_PROJECTS;
+    } catch (e) {
+      console.error("Error parsing projects:", e);
+      return INITIAL_PROJECTS;
+    }
   });
   const [activities, setActivities] = useState<Activity[]>(() => {
-    const saved = localStorage.getItem('wl_activities');
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = localStorage.getItem('wl_activities');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      console.error("Error parsing activities:", e);
+      return [];
+    }
   });
   const [predefinedActivities, setPredefinedActivities] = useState<PredefinedActivity[]>(() => {
-    const saved = localStorage.getItem('wl_predefined');
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = localStorage.getItem('wl_predefined');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      console.error("Error parsing predefined activities:", e);
+      return [];
+    }
   });
   const [weeklyWorkHours, setWeeklyWorkHours] = useState<WeeklyWorkHours>(() => {
     const saved = localStorage.getItem('wl_weekly_hours');
@@ -194,6 +209,7 @@ const App: React.FC = () => {
         )}
 
         {view === 'dashboard' && <Dashboard activities={activities} projects={projects} weeklyWorkHours={weeklyWorkHours} onDeleteActivity={deleteActivity} onEditActivity={(a) => setEditingActivity(a)} />}
+        {view === 'log' && <ActivityLog activities={activities} projects={projects} onDelete={deleteActivity} onEdit={(a) => setEditingActivity(a)} />}
         {view === 'projects' && <ProjectManager projects={projects} onAdd={addProject} onDelete={deleteProject} onUpdate={updateProject} />}
         {view === 'options' && (
           <SettingsManager 

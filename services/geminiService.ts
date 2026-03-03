@@ -2,8 +2,20 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { Activity, Project } from "../types";
 
-// Initialize Gemini API client using the mandatory environment variable
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Lazy initialization of Gemini API client
+let aiInstance: GoogleGenAI | null = null;
+
+const getAI = () => {
+  if (!aiInstance) {
+    const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      console.warn("Gemini API key is missing. AI features will not work.");
+      return null;
+    }
+    aiInstance = new GoogleGenAI({ apiKey });
+  }
+  return aiInstance;
+};
 
 /**
  * Summarizes the user's work activities using Gemini 3 Flash.
@@ -12,6 +24,9 @@ export const summarizeWork = async (activities: Activity[], projects: Project[])
   if (!navigator.onLine) {
     return "L'analisi AI richiede una connessione internet. Funzionalità non disponibile offline.";
   }
+
+  const ai = getAI();
+  if (!ai) return "Configurazione AI mancante.";
 
   const model = 'gemini-3-flash-preview';
   
@@ -52,6 +67,9 @@ export const parseActivityInput = async (input: string, projects: Project[]) => 
   if (!navigator.onLine) {
     return null;
   }
+
+  const ai = getAI();
+  if (!ai) return null;
 
   const model = 'gemini-3-pro-preview';
   
