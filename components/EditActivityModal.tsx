@@ -60,7 +60,6 @@ const EditActivityModal: React.FC<EditActivityModalProps> = ({ activity, project
             <select value={activityCode} onChange={(e) => setActivityCode(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-black text-slate-800 tracking-tight">
               <option value="">Nessuno</option>
               {predefinedActivities.map(pa => <option key={pa.id} value={pa.code}>{pa.code}</option>)}
-              <option value="GENERIC">GENERIC</option>
             </select>
           </div>
 

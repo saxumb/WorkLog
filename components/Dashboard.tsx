@@ -69,7 +69,13 @@ const Dashboard: React.FC<DashboardProps> = ({ activities, projects, weeklyWorkH
       if (hours > limit) overtime += (hours - limit);
     });
     
-    return { totalHours: totalSeconds / 3600, overtime, sessions: filteredActivities.length };
+    const uniqueProjectIds = new Set(filteredActivities.map(a => a.projectId).filter(Boolean));
+    
+    return { 
+      totalHours: totalSeconds / 3600, 
+      overtime, 
+      projectsCount: uniqueProjectIds.size 
+    };
   }, [filteredActivities, weeklyWorkHours]);
 
   const handleGenerateReport = async () => {
@@ -147,13 +153,13 @@ const Dashboard: React.FC<DashboardProps> = ({ activities, projects, weeklyWorkH
           {/* Stat Item 3 */}
           <div className="flex-1 flex items-center gap-4 px-8 py-5 group hover:bg-slate-50 transition-colors">
             <div className="p-2.5 bg-slate-50 text-slate-600 rounded-2xl group-hover:scale-110 transition-transform">
-              <History size={20} />
+              <Target size={20} />
             </div>
             <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Sessioni</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Commesse</p>
               <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-black text-slate-800">{stats.sessions}</span>
-                <span className="text-[10px] font-bold text-slate-400 uppercase ml-2 tracking-tighter">Attività</span>
+                <span className="text-2xl font-black text-slate-800">{stats.projectsCount}</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase ml-2 tracking-tighter">Progetti</span>
               </div>
             </div>
           </div>
