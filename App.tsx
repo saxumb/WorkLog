@@ -27,7 +27,8 @@ const App: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>(() => {
     try {
       const saved = localStorage.getItem('wl_projects');
-      return saved ? JSON.parse(saved) : INITIAL_PROJECTS;
+      const parsed = saved ? JSON.parse(saved) : null;
+      return Array.isArray(parsed) ? parsed : INITIAL_PROJECTS;
     } catch (e) {
       console.error("Error parsing projects:", e);
       return INITIAL_PROJECTS;
@@ -36,7 +37,8 @@ const App: React.FC = () => {
   const [activities, setActivities] = useState<Activity[]>(() => {
     try {
       const saved = localStorage.getItem('wl_activities');
-      return saved ? JSON.parse(saved) : [];
+      const parsed = saved ? JSON.parse(saved) : null;
+      return Array.isArray(parsed) ? parsed : [];
     } catch (e) {
       console.error("Error parsing activities:", e);
       return [];
@@ -45,7 +47,8 @@ const App: React.FC = () => {
   const [predefinedActivities, setPredefinedActivities] = useState<PredefinedActivity[]>(() => {
     try {
       const saved = localStorage.getItem('wl_predefined');
-      return saved ? JSON.parse(saved) : [];
+      const parsed = saved ? JSON.parse(saved) : null;
+      return Array.isArray(parsed) ? parsed : [];
     } catch (e) {
       console.error("Error parsing predefined activities:", e);
       return [];
