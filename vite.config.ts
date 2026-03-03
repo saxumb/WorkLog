@@ -7,7 +7,7 @@ import { VitePWA } from 'vite-plugin-pwa';
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
     return {
-      base: './',
+      base: '/',
       server: {
         port: 3000,
         host: '0.0.0.0',
@@ -17,23 +17,26 @@ export default defineConfig(({ mode }) => {
         tailwindcss(),
         VitePWA({
           registerType: 'autoUpdate',
+          includeAssets: ['icon-192x192.png', 'icon-512x512.png'],
           manifest: {
             name: 'WorkLog AI',
             short_name: 'WorkLog',
-            description: 'Professional timesheet application with AI-powered reporting',
+            description: 'Gestione presenze e commesse con intelligenza artificiale',
             theme_color: '#4f46e5',
             background_color: '#f8fafc',
             display: 'standalone',
             icons: [
               {
-                src: 'https://picsum.photos/192/192',
+                src: 'icon-192x192.png',
                 sizes: '192x192',
-                type: 'image/png'
+                type: 'image/png',
+                purpose: 'any maskable'
               },
               {
-                src: 'https://picsum.photos/512/512',
+                src: 'icon-512x512.png',
                 sizes: '512x512',
-                type: 'image/png'
+                type: 'image/png',
+                purpose: 'any maskable'
               }
             ]
           }
