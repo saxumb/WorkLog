@@ -3,7 +3,6 @@ import React, { useState, useEffect } from 'react';
 import Layout from './components/Layout';
 import EntryPanel from './components/EntryPanel';
 import Dashboard from './components/Dashboard';
-import ActivityLog from './components/ActivityLog';
 import ProjectManager from './components/ProjectManager';
 import SettingsManager from './components/SettingsManager';
 import EditActivityModal from './components/EditActivityModal';
@@ -212,7 +211,6 @@ const App: React.FC = () => {
         )}
 
         {view === 'dashboard' && <Dashboard activities={activities} projects={projects} weeklyWorkHours={weeklyWorkHours} onDeleteActivity={deleteActivity} onEditActivity={(a) => setEditingActivity(a)} />}
-        {view === 'log' && <ActivityLog activities={activities} projects={projects} onDelete={deleteActivity} onEdit={(a) => setEditingActivity(a)} />}
         {view === 'projects' && <ProjectManager projects={projects} onAdd={addProject} onDelete={deleteProject} onUpdate={updateProject} />}
         {view === 'options' && (
           <SettingsManager 
