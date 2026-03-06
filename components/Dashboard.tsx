@@ -59,13 +59,15 @@ const Dashboard: React.FC<DashboardProps> = ({ activities, projects, weeklyWorkH
       const totalSeconds = groups[date].reduce((acc, curr) => acc + curr.durationSeconds, 0);
       const totalHours = totalSeconds / 3600;
       const missingHours = Math.max(0, requiredHours - totalHours);
+      const overtimeHours = Math.max(0, totalHours - requiredHours);
 
       return {
         date,
         activities: groups[date],
         totalSeconds,
         requiredHours,
-        missingHours
+        missingHours,
+        overtimeHours
       };
     });
   }, [filteredActivities, weeklyWorkHours]);
@@ -113,9 +115,10 @@ const Dashboard: React.FC<DashboardProps> = ({ activities, projects, weeklyWorkH
 
   const formatDateLabel = (dateStr: string) => {
     const d = new Date(dateStr);
-    const today = new Date().toISOString().split('T')[0];
-    if (dateStr === today) return 'Oggi';
-    return d.toLocaleDateString('it-IT', { weekday: 'long', day: '2-digit', month: 'long' });
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
   };
 
   return (
@@ -176,7 +179,7 @@ const Dashboard: React.FC<DashboardProps> = ({ activities, projects, weeklyWorkH
               <History size={20} />
             </div>
             <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Permessi/Ferie</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">ROL/FE</p>
               <div className="flex items-baseline gap-1">
                 <span className="text-2xl font-black text-rose-500">{Math.round(stats.totalMissingHours * 10) / 10}</span>
                 <span className="text-xs font-bold text-slate-400">h</span>
@@ -246,45 +249,47 @@ const Dashboard: React.FC<DashboardProps> = ({ activities, projects, weeklyWorkH
           )}
         </div>
 
-        <div className="p-4 md:p-8 space-y-6">
+        <div className="p-3 md:p-6 space-y-2">
           {groupedActivities.map((group) => (
             <div key={group.date} className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden transition-all">
               <button 
                 onClick={() => toggleDay(group.date)}
-                className="w-full flex items-center justify-between p-5 hover:bg-slate-50 transition-colors"
+                className="w-full flex items-center justify-between p-2 md:p-3 hover:bg-slate-50 transition-colors"
               >
-                <div className="flex items-center gap-4">
-                  <div className="flex flex-col items-start">
-                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Data</span>
-                    <span className="text-xs font-black text-slate-800 uppercase">{formatDateLabel(group.date)}</span>
+                <div className="flex items-center gap-2 md:gap-8 flex-1">
+                  <div className="flex flex-col items-center justify-center w-24 md:w-32">
+                    <span className="text-[11px] md:text-xs font-black text-slate-800 uppercase truncate text-center">{formatDateLabel(group.date)}</span>
                   </div>
-                  <div className="h-6 w-px bg-slate-100"></div>
-                  <div className="flex flex-col items-start">
-                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Tempo</span>
-                    <span className="text-xs font-black text-indigo-600">{formatDuration(group.totalSeconds)}</span>
+                  <div className="h-6 w-px bg-slate-100 hidden md:block"></div>
+                  <div className="flex flex-col items-center justify-center w-16 md:w-20">
+                    <span className="text-[11px] md:text-xs font-black text-indigo-600 text-center">{formatDuration(group.totalSeconds)}</span>
                   </div>
                   {group.missingHours > 0 && (
                     <>
-                      <div className="h-6 w-px bg-slate-100"></div>
-                      <div className="flex flex-col items-start">
-                        <span className="text-[9px] font-black text-rose-400 uppercase tracking-widest leading-none mb-1">Permesso/Ferie</span>
-                        <span className="text-xs font-black text-rose-500">+{Math.round(group.missingHours * 10) / 10}h</span>
+                      <div className="h-6 w-px bg-slate-100 hidden md:block"></div>
+                      <div className="flex flex-col items-center justify-center w-16 md:w-20">
+                        <span className="text-[11px] md:text-xs font-black text-rose-500 text-center">-{Math.round(group.missingHours * 10) / 10}h</span>
+                      </div>
+                    </>
+                  )}
+                  {group.overtimeHours > 0 && (
+                    <>
+                      <div className="h-6 w-px bg-slate-100 hidden md:block"></div>
+                      <div className="flex flex-col items-center justify-center w-16 md:w-20">
+                        <span className="text-[11px] md:text-xs font-black text-amber-500 text-center">+{Math.round(group.overtimeHours * 10) / 10}h</span>
                       </div>
                     </>
                   )}
                 </div>
-                <div className={`p-1.5 rounded-lg bg-slate-50 text-slate-400 transition-transform duration-300 ${expandedDays[group.date] ? 'rotate-180' : ''}`}>
-                  <Zap size={14} className={expandedDays[group.date] ? 'fill-indigo-500 text-indigo-500' : ''} />
-                </div>
               </button>
 
               {expandedDays[group.date] && (
-                <div className="px-5 pb-5 space-y-3 animate-in slide-in-from-top-2 duration-300">
-                  <div className="h-px bg-slate-50 mb-3"></div>
+                <div className="px-4 pb-4 space-y-2">
+                  <div className="h-px bg-slate-50 mb-2"></div>
                   {group.activities.map((activity) => {
                     const project = projects.find(p => p.id === activity.projectId);
                     return (
-                      <div key={activity.id} className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100 flex flex-col md:flex-row md:items-center gap-4">
+                      <div key={activity.id} className="bg-slate-50/50 rounded-xl p-3 border border-slate-100 flex flex-col md:flex-row md:items-center gap-3">
                         <div className="flex flex-col flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
                             <div className={`w-2 h-2 rounded-full ${project?.color || 'bg-slate-300'}`}></div>
@@ -292,7 +297,7 @@ const Dashboard: React.FC<DashboardProps> = ({ activities, projects, weeklyWorkH
                           </div>
                           <div className="flex items-baseline gap-2 pl-3.5 border-l-2 border-slate-200">
                             <span className="text-[9px] font-black text-slate-500 shrink-0">
-                              [{activity.activityCode}]
+                              {activity.activityCode}
                             </span>
                             <p className="text-[11px] text-slate-500 italic truncate">
                               {activity.description || "Nessuna descrizione"}

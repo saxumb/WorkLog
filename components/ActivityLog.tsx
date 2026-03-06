@@ -105,17 +105,12 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, projects, onDelet
             >
               <div className="flex items-center gap-6">
                 <div className="flex flex-col items-start">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Giornata</span>
                   <span className="text-sm font-black text-slate-800 uppercase">{formatDateLabel(group.date)}</span>
                 </div>
                 <div className="h-8 w-px bg-slate-100"></div>
                 <div className="flex flex-col items-start">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Tempo Totale</span>
                   <span className="text-sm font-black text-indigo-600">{formatDuration(group.totalSeconds)}</span>
                 </div>
-              </div>
-              <div className={`p-2 rounded-xl bg-slate-100 text-slate-400 transition-transform duration-300 ${expandedDays[group.date] ? 'rotate-180' : ''}`}>
-                <Zap size={16} className={expandedDays[group.date] ? 'fill-indigo-500 text-indigo-500' : ''} />
               </div>
             </button>
 
@@ -130,7 +125,7 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, projects, onDelet
                         <div className="flex items-center gap-2 mb-1"><div className={`w-2 h-2 rounded-full ${project?.color || 'bg-slate-300'}`}></div><span className="text-xs font-black text-slate-700 truncate uppercase tracking-tight">{project?.name || 'Senza Commessa'}</span></div>
                         <div className="flex items-baseline gap-2 pl-3.5 border-l-2 border-slate-200">
                           <span className="text-[9px] font-black text-slate-500 shrink-0">
-                            [{activity.activityCode}]
+                            {activity.activityCode}
                           </span>
                           <p className="text-xs text-slate-500 italic truncate">
                             {activity.description || "Nessuna descrizione"}

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Play, Square, Check, Sparkles, Loader2, History, Mic, MicOff, AlertCircle, Tag, Clock, CheckCheck } from 'lucide-react';
+import { Play, Square, Check, Sparkles, Loader2, History, Mic, MicOff, AlertCircle, Tag, Clock, CheckCheck, Plus, Minus } from 'lucide-react';
 import { Project, Activity, PredefinedActivity, WeeklyWorkHours } from '../types';
 import { parseActivityInput } from '../services/geminiService';
 
@@ -233,7 +233,21 @@ const EntryPanel: React.FC<EntryPanelProps> = ({ projects, activeActivity, activ
               <div className="md:col-span-12 lg:col-span-4 space-y-4 bg-slate-50/50 p-6 rounded-[2rem] border border-slate-100">
                 <div className="text-center">
                   <label className="text-[10px] font-black text-slate-400 uppercase block mb-1">5. Durata (Step 30min)</label>
-                  <div className="text-3xl font-black text-indigo-600 mb-2">{durationHours.toFixed(1)}<span className="text-sm ml-1 text-slate-400">h</span></div>
+                  <div className="flex items-center justify-center gap-4 mb-2">
+                    <button 
+                      onClick={() => setDurationHours(prev => Math.max(0.5, prev - 0.5))}
+                      className="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-full text-slate-400 hover:text-rose-500 hover:border-rose-200 transition-all shadow-sm"
+                    >
+                      <Minus size={16} />
+                    </button>
+                    <div className="text-3xl font-black text-indigo-600">{durationHours.toFixed(1)}<span className="text-sm ml-1 text-slate-400">h</span></div>
+                    <button 
+                      onClick={() => setDurationHours(prev => Math.min(18, prev + 0.5))}
+                      className="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-full text-slate-400 hover:text-emerald-500 hover:border-emerald-200 transition-all shadow-sm"
+                    >
+                      <Plus size={16} />
+                    </button>
+                  </div>
                   <div className="text-[11px] font-bold text-slate-400 uppercase">{formatHoursDisplay(durationHours)}</div>
                 </div>
                 <input type="range" min="0.5" max="18" step="0.5" value={durationHours} onChange={(e) => setDurationHours(parseFloat(e.target.value))} className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600" />
