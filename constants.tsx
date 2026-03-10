@@ -15,7 +15,6 @@ export const CHART_COLORS = [
 
 export const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
-  { id: 'log', label: 'Attività', icon: <ClipboardList size={20} /> },
   { id: 'projects', label: 'Commesse', icon: <Briefcase size={20} /> },
   { id: 'options', label: 'Opzioni', icon: <Settings size={20} /> },
 ];

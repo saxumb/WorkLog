@@ -1,25 +1,32 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Activity, Project, WeeklyWorkHours } from '../types';
-import { Zap, Pencil, Trash2, Sparkles, Loader2, Clock, History, ClipboardList, Target } from 'lucide-react';
+import { Activity, Project, WeeklyWorkHours, PredefinedActivity } from '../types';
+import { Zap, Pencil, Trash2, Sparkles, Loader2, Clock, History, ClipboardList, Target, Printer, Plus, ChevronDown, ChevronUp, Filter, Search, X } from 'lucide-react';
 import { summarizeWork } from '../services/geminiService';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface DashboardProps {
   activities: Activity[];
   projects: Project[];
+  predefinedActivities: PredefinedActivity[];
   weeklyWorkHours: WeeklyWorkHours;
   onDeleteActivity: (id: string) => void;
   onEditActivity: (activity: Activity) => void;
+  onNavigateToEntry: () => void;
 }
 
 type RangePreset = 'today' | 'week' | '30days' | 'month' | 'custom';
 
-const Dashboard: React.FC<DashboardProps> = ({ activities, projects, weeklyWorkHours, onDeleteActivity, onEditActivity }) => {
+const Dashboard: React.FC<DashboardProps> = ({ activities, projects, predefinedActivities, weeklyWorkHours, onDeleteActivity, onEditActivity, onNavigateToEntry }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [report, setReport] = useState<string | null>(null);
   const [preset, setPreset] = useState<RangePreset>('month');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('all');
+  const [selectedActivityCode, setSelectedActivityCode] = useState<string>('all');
+  const [isFiltersOpen, setIsFiltersOpen] = useState(false);
 
   const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({});
 
@@ -42,8 +49,14 @@ const Dashboard: React.FC<DashboardProps> = ({ activities, projects, weeklyWorkH
     let list = activities.filter(a => a.endTime);
     if (startDate) { const start = new Date(startDate); start.setHours(0, 0, 0, 0); list = list.filter(a => new Date(a.startTime) >= start); }
     if (endDate) { const end = new Date(endDate); end.setHours(23, 59, 59, 999); list = list.filter(a => new Date(a.startTime) <= end); }
+    if (selectedProjectId !== 'all') {
+      list = list.filter(a => a.projectId === selectedProjectId);
+    }
+    if (selectedActivityCode !== 'all') {
+      list = list.filter(a => a.activityCode === selectedActivityCode);
+    }
     return list.sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime());
-  }, [activities, startDate, endDate]);
+  }, [activities, startDate, endDate, selectedProjectId, selectedActivityCode]);
 
   const groupedActivities = useMemo(() => {
     const groups: Record<string, Activity[]> = {};
@@ -107,6 +120,59 @@ const Dashboard: React.FC<DashboardProps> = ({ activities, projects, weeklyWorkH
     setIsGenerating(false);
   };
 
+  const handleExportPDF = () => {
+    const doc = new jsPDF();
+    const title = `Report Attività: ${startDate} - ${endDate}`;
+    
+    doc.setFontSize(18);
+    doc.text('WorkLog AI - Report Attività', 14, 22);
+    
+    doc.setFontSize(11);
+    doc.setTextColor(100);
+    doc.text(`Periodo: ${formatDateLabel(startDate)} - ${formatDateLabel(endDate)}`, 14, 30);
+    doc.text(`Generato il: ${new Date().toLocaleString('it-IT')}`, 14, 36);
+
+    // Stats
+    doc.setFontSize(12);
+    doc.setTextColor(0);
+    doc.text('Riepilogo:', 14, 48);
+    doc.setFontSize(10);
+    doc.text(`Ore Totali: ${Math.round(stats.totalHours * 10) / 10}h`, 14, 56);
+    doc.text(`Straordinari: ${Math.round(stats.overtime * 10) / 10}h`, 14, 62);
+    doc.text(`ROL/FE: ${Math.round(stats.totalMissingHours * 10) / 10}h`, 14, 68);
+    doc.text(`Progetti: ${stats.projectsCount}`, 14, 74);
+
+    if (report) {
+      doc.setFontSize(12);
+      doc.text('Analisi AI:', 14, 86);
+      doc.setFontSize(9);
+      const splitReport = doc.splitTextToSize(report, 180);
+      doc.text(splitReport, 14, 94);
+    }
+
+    const tableData = filteredActivities.map(a => {
+      const project = projects.find(p => p.id === a.projectId);
+      return [
+        formatDateLabel(a.startTime),
+        project?.name || 'N/A',
+        a.activityCode || '---',
+        a.description || '',
+        formatDuration(a.durationSeconds)
+      ];
+    });
+
+    autoTable(doc, {
+      startY: report ? (doc as any).lastAutoTable?.finalY || 130 : 86,
+      head: [['Data', 'Progetto', 'Codice', 'Descrizione', 'Durata']],
+      body: tableData,
+      theme: 'striped',
+      headStyles: { fillColor: [79, 70, 229] },
+      styles: { fontSize: 8 },
+    });
+
+    doc.save(`worklog_report_${startDate}_${endDate}.pdf`);
+  };
+
   const formatDuration = (seconds: number) => {
     const h = Math.floor(seconds / 3600);
     const m = Math.floor((seconds % 3600) / 60);
@@ -124,25 +190,123 @@ const Dashboard: React.FC<DashboardProps> = ({ activities, projects, weeklyWorkH
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-6xl mx-auto pb-12 px-4 md:px-0">
       
-      {/* Date Filter & Unified Stats Row */}
-      <div className="flex flex-col gap-4">
-        {/* Presets Row */}
-        <div className="bg-white p-1.5 rounded-[2rem] border border-slate-200 shadow-sm flex flex-wrap items-center gap-1 w-fit mx-auto md:mx-0">
-          {['today', 'week', '30days', 'month', 'custom'].map((id) => (
-            <button key={id} onClick={() => setPreset(id as RangePreset)} className={`px-5 py-2 rounded-full text-[11px] font-bold uppercase transition-all ${preset === id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'text-slate-500 hover:text-slate-800'}`}>
-              {id === 'today' ? 'Oggi' : id === 'week' ? '7 Giorni' : id === '30days' ? '30 Giorni' : id === 'month' ? 'Mese' : 'Personalizzato'}
-            </button>
-          ))}
-          {preset === 'custom' && (
-            <div className="flex items-center gap-2 px-4 py-1.5 bg-indigo-50 rounded-full border border-indigo-100 animate-in fade-in zoom-in-95 ml-2">
-              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="bg-transparent text-[10px] font-bold text-indigo-900 outline-none" />
-              <span className="text-indigo-300 text-[10px]">→</span>
-              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="bg-transparent text-[10px] font-bold text-indigo-900 outline-none" />
-            </div>
-          )}
+      {/* New Activity Button */}
+      <button 
+        onClick={onNavigateToEntry}
+        className="w-full py-6 bg-indigo-600 hover:bg-indigo-700 text-white rounded-[2rem] shadow-xl shadow-indigo-100 flex items-center justify-center gap-4 transition-all group overflow-hidden relative"
+      >
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+        <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
+          <Plus size={28} strokeWidth={3} />
         </div>
+        <div className="text-left">
+          <span className="block text-xs font-black uppercase tracking-[0.2em] opacity-80">Nuova Registrazione</span>
+          <span className="block text-xl font-black uppercase tracking-tight">Inserisci Attività</span>
+        </div>
+      </button>
 
-        {/* COMPACT UNIFIED STATS ROW */}
+      {/* Collapsible Filters Card */}
+      <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
+        <button 
+          onClick={() => setIsFiltersOpen(!isFiltersOpen)}
+          className="w-full px-8 py-5 flex items-center justify-between hover:bg-slate-50 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
+              <Filter size={18} />
+            </div>
+            <div className="text-left">
+              <h3 className="text-xs font-black uppercase tracking-widest text-slate-800">Filtri Ricerca</h3>
+              <p className="text-[10px] font-bold text-slate-400 uppercase">Personalizza la visualizzazione</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            {(selectedProjectId !== 'all' || selectedActivityCode !== 'all' || preset !== 'month') && (
+              <div className="hidden md:flex items-center gap-2 px-3 py-1 bg-amber-50 text-amber-600 rounded-full border border-amber-100">
+                <span className="text-[9px] font-black uppercase tracking-tighter">Filtri Attivi</span>
+              </div>
+            )}
+            <div className="text-slate-400">
+              {isFiltersOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+            </div>
+          </div>
+        </button>
+
+        {isFiltersOpen && (
+          <div className="px-8 pb-8 pt-2 space-y-6 animate-in slide-in-from-top-2 duration-300">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Date Filter */}
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Periodo Temporale</label>
+                <div className="flex flex-wrap gap-1.5 p-1.5 bg-slate-50 rounded-2xl border border-slate-100">
+                  {['today', 'week', '30days', 'month', 'custom'].map((id) => (
+                    <button 
+                      key={id} 
+                      onClick={() => setPreset(id as RangePreset)} 
+                      className={`flex-1 px-3 py-2 rounded-xl text-[9px] font-black uppercase transition-all ${preset === id ? 'bg-white text-indigo-600 shadow-sm border border-slate-100' : 'text-slate-500 hover:text-slate-800'}`}
+                    >
+                      {id === 'today' ? 'Oggi' : id === 'week' ? '7g' : id === '30days' ? '30g' : id === 'month' ? 'Mese' : 'Custom'}
+                    </button>
+                  ))}
+                </div>
+                {preset === 'custom' && (
+                  <div className="flex items-center gap-2 p-3 bg-indigo-50/50 rounded-2xl border border-indigo-100 animate-in fade-in zoom-in-95">
+                    <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="bg-transparent text-[10px] font-bold text-indigo-900 outline-none w-full" />
+                    <span className="text-indigo-300 text-[10px]">→</span>
+                    <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="bg-transparent text-[10px] font-bold text-indigo-900 outline-none w-full" />
+                  </div>
+                )}
+              </div>
+
+              {/* Project Filter */}
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Filtra per Commessa</label>
+                <select 
+                  value={selectedProjectId} 
+                  onChange={(e) => setSelectedProjectId(e.target.value)}
+                  className="w-full p-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold text-slate-700 outline-none focus:border-indigo-300 focus:ring-4 focus:ring-indigo-50 transition-all appearance-none cursor-pointer"
+                >
+                  <option value="all">Tutte le Commesse</option>
+                  {projects.map(p => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Activity Code Filter */}
+              <div className="space-y-3">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Filtra per Attività</label>
+                <select 
+                  value={selectedActivityCode} 
+                  onChange={(e) => setSelectedActivityCode(e.target.value)}
+                  className="w-full p-3.5 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold text-slate-700 outline-none focus:border-indigo-300 focus:ring-4 focus:ring-indigo-50 transition-all appearance-none cursor-pointer"
+                >
+                  <option value="all">Tutte le Attività</option>
+                  {predefinedActivities.map(pa => (
+                    <option key={pa.id} value={pa.code}>{pa.code} - {pa.description}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button 
+                onClick={() => {
+                  setPreset('month');
+                  setSelectedProjectId('all');
+                  setSelectedActivityCode('all');
+                }}
+                className="flex items-center gap-2 px-4 py-2 text-[10px] font-black uppercase text-slate-400 hover:text-rose-500 transition-colors"
+              >
+                <X size={14} />
+                Reset Filtri
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* COMPACT UNIFIED STATS ROW */}
         <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm flex flex-col md:flex-row items-stretch md:items-center divide-y md:divide-y-0 md:divide-x divide-slate-100 overflow-hidden">
           
           {/* Stat Item 1 */}
@@ -202,18 +366,25 @@ const Dashboard: React.FC<DashboardProps> = ({ activities, projects, weeklyWorkH
           </div>
 
           {/* AI Report CTA in-line if screen is large enough */}
-          <div className="p-5 flex items-center justify-center bg-slate-50/50">
+          <div className="p-5 flex items-center justify-center bg-slate-50/50 gap-2">
             <button 
               onClick={handleGenerateReport} 
               disabled={isGenerating || filteredActivities.length === 0} 
-              className="flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black uppercase rounded-2xl shadow-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed whitespace-nowrap"
+              className="flex-1 md:flex-none flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black uppercase rounded-2xl shadow-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed whitespace-nowrap"
             >
               {isGenerating ? <Loader2 className="animate-spin" size={14} /> : <Sparkles size={14} />} 
               Analisi AI
             </button>
+            <button 
+              onClick={handleExportPDF} 
+              disabled={filteredActivities.length === 0} 
+              className="flex-1 md:flex-none flex items-center gap-2 px-6 py-3 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-[10px] font-black uppercase rounded-2xl shadow-sm transition-all disabled:opacity-30 disabled:cursor-not-allowed whitespace-nowrap"
+            >
+              <Printer size={14} /> 
+              Esporta PDF
+            </button>
           </div>
         </div>
-      </div>
 
       {/* AI Report Section */}
       {report && (

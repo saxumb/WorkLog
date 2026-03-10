@@ -1,8 +1,10 @@
 
 import React, { useState, useMemo } from 'react';
-import { Trash2, FileText, Sparkles, Loader2, Pencil, Calendar, Clock, Zap } from 'lucide-react';
+import { Trash2, FileText, Sparkles, Loader2, Pencil, Calendar, Clock, Zap, Printer } from 'lucide-react';
 import { Activity, Project } from '../types';
 import { summarizeWork } from '../services/geminiService';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface ActivityLogProps {
   activities: Activity[];
@@ -67,6 +69,39 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, projects, onDelet
     setIsGenerating(false);
   };
 
+  const handleExportPDF = () => {
+    const doc = new jsPDF();
+    doc.setFontSize(18);
+    doc.text('WorkLog AI - Registro Attività', 14, 22);
+    
+    doc.setFontSize(11);
+    doc.setTextColor(100);
+    doc.text(`Filtro: ${filter === 'all' ? 'Tutto' : filter === 'week' ? 'Settimana' : 'Mese'}`, 14, 30);
+    doc.text(`Generato il: ${new Date().toLocaleString('it-IT')}`, 14, 36);
+
+    const tableData = filteredActivities.map(a => {
+      const project = projects.find(p => p.id === a.projectId);
+      return [
+        formatDateLabel(a.startTime),
+        project?.name || 'N/A',
+        a.activityCode || '---',
+        a.description || '',
+        formatDuration(a.durationSeconds)
+      ];
+    });
+
+    autoTable(doc, {
+      startY: 45,
+      head: [['Data', 'Progetto', 'Codice', 'Descrizione', 'Durata']],
+      body: tableData,
+      theme: 'striped',
+      headStyles: { fillColor: [79, 70, 229] },
+      styles: { fontSize: 8 },
+    });
+
+    doc.save(`worklog_log_${filter}.pdf`);
+  };
+
   const formatDateLabel = (dateStr: string) => {
     const d = new Date(dateStr);
     return d.toLocaleDateString('it-IT', { day: '2-digit', month: 'short' });
@@ -86,6 +121,7 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, projects, onDelet
             ))}
           </div>
           <button onClick={handleGenerateReport} disabled={isGenerating || filteredActivities.length === 0} className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white text-xs font-bold rounded-2xl shadow-lg transition-all disabled:opacity-50">{isGenerating ? <Loader2 className="animate-spin" size={16} /> : <Sparkles size={16} />} REPORT AI ({filteredActivities.length})</button>
+          <button onClick={handleExportPDF} disabled={filteredActivities.length === 0} className="flex items-center gap-2 px-6 py-2.5 bg-white border border-slate-200 text-slate-700 text-xs font-bold rounded-2xl shadow-sm transition-all disabled:opacity-50 hover:bg-slate-50"><Printer size={16} /> PDF</button>
         </div>
       </div>
 

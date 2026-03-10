@@ -210,7 +210,7 @@ const App: React.FC = () => {
           <EntryPanel projects={projects} activeActivity={activeActivity} activities={activities} predefinedActivities={predefinedActivities} weeklyWorkHours={weeklyWorkHours} onStart={startTimer} onStop={stopTimer} onManualAdd={addManualActivity} />
         )}
 
-        {view === 'dashboard' && <Dashboard activities={activities} projects={projects} weeklyWorkHours={weeklyWorkHours} onDeleteActivity={deleteActivity} onEditActivity={(a) => setEditingActivity(a)} />}
+        {view === 'dashboard' && <Dashboard activities={activities} projects={projects} predefinedActivities={predefinedActivities} weeklyWorkHours={weeklyWorkHours} onDeleteActivity={deleteActivity} onEditActivity={(a) => setEditingActivity(a)} onNavigateToEntry={() => setView('log')} />}
         {view === 'projects' && <ProjectManager projects={projects} onAdd={addProject} onDelete={deleteProject} onUpdate={updateProject} />}
         {view === 'options' && (
           <SettingsManager 
