@@ -1,8 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
-import { Trash2, FileText, Sparkles, Loader2, Pencil, Calendar, Clock, Zap, Printer } from 'lucide-react';
+import { Trash2, FileText, Loader2, Pencil, Calendar, Clock, Zap, Printer } from 'lucide-react';
 import { Activity, Project } from '../types';
-import { summarizeWork } from '../services/geminiService';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -16,8 +15,6 @@ interface ActivityLogProps {
 type FilterType = 'all' | 'week' | 'month';
 
 const ActivityLog: React.FC<ActivityLogProps> = ({ activities, projects, onDelete, onEdit }) => {
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [report, setReport] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterType>('all');
   const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({});
 
@@ -62,17 +59,10 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, projects, onDelet
     }));
   }, [filteredActivities]);
 
-  const handleGenerateReport = async () => {
-    setIsGenerating(true);
-    const result = await summarizeWork(filteredActivities, projects);
-    setReport(result);
-    setIsGenerating(false);
-  };
-
   const handleExportPDF = () => {
     const doc = new jsPDF();
     doc.setFontSize(18);
-    doc.text('WorkLog AI - Registro Attività', 14, 22);
+    doc.text('WorkLog - Registro Attività', 14, 22);
     
     doc.setFontSize(11);
     doc.setTextColor(100);
@@ -120,17 +110,9 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, projects, onDelet
               <button key={f} onClick={() => setFilter(f as FilterType)} className={`px-4 py-2 rounded-xl text-[11px] font-bold uppercase transition-all ${filter === f ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>{f === 'all' ? 'Tutto' : f === 'week' ? 'Settimana' : 'Mese'}</button>
             ))}
           </div>
-          <button onClick={handleGenerateReport} disabled={isGenerating || filteredActivities.length === 0} className="flex items-center gap-2 px-6 py-2.5 bg-indigo-600 text-white text-xs font-bold rounded-2xl shadow-lg transition-all disabled:opacity-50">{isGenerating ? <Loader2 className="animate-spin" size={16} /> : <Sparkles size={16} />} REPORT AI ({filteredActivities.length})</button>
           <button onClick={handleExportPDF} disabled={filteredActivities.length === 0} className="flex items-center gap-2 px-6 py-2.5 bg-white border border-slate-200 text-slate-700 text-xs font-bold rounded-2xl shadow-sm transition-all disabled:opacity-50 hover:bg-slate-50"><Printer size={16} /> PDF</button>
         </div>
       </div>
-
-      {report && (
-        <div className="bg-indigo-50/50 p-6 rounded-3xl border border-indigo-100 shadow-sm animate-in zoom-in-95 duration-300">
-          <div className="flex justify-between items-start mb-4"><h3 className="text-indigo-900 font-bold flex items-center gap-2"><Sparkles className="text-indigo-500" size={18} /> Analisi Intelligente</h3><button onClick={() => setReport(null)} className="text-indigo-400 hover:text-indigo-600 text-sm font-medium">Chiudi</button></div>
-          <div className="text-indigo-900 whitespace-pre-wrap leading-relaxed font-medium text-sm">{report}</div>
-        </div>
-      )}
 
       <div className="space-y-4">
         {groupedActivities.map((group) => (

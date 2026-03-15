@@ -9,7 +9,7 @@ const getAI = () => {
   if (!aiInstance) {
     const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
     if (!apiKey) {
-      console.warn("Gemini API key is missing. AI features will not work.");
+      console.warn("Gemini API key is missing. Smart features will not work.");
       return null;
     }
     aiInstance = new GoogleGenAI({ apiKey });
@@ -22,11 +22,11 @@ const getAI = () => {
  */
 export const summarizeWork = async (activities: Activity[], projects: Project[]) => {
   if (!navigator.onLine) {
-    return "L'analisi AI richiede una connessione internet. Funzionalità non disponibile offline.";
+    return "L'analisi intelligente richiede una connessione internet. Funzionalità non disponibile offline.";
   }
 
   const ai = getAI();
-  if (!ai) return "Configurazione AI mancante.";
+  if (!ai) return "Configurazione mancante.";
 
   const model = 'gemini-3-flash-preview';
   
@@ -56,7 +56,7 @@ export const summarizeWork = async (activities: Activity[], projects: Project[])
     return response.text;
   } catch (error) {
     console.error("Gemini Error:", error);
-    return "Impossibile generare il report AI al momento.";
+    return "Impossibile generare il report al momento.";
   }
 };
 

@@ -69,6 +69,7 @@ const App: React.FC = () => {
     }
     return DEFAULT_WEEKLY_HOURS;
   });
+  const [companyLogo, setCompanyLogo] = useState<string | null>(() => localStorage.getItem('wl_company_logo'));
 
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
   const [confirmConfig, setConfirmConfig] = useState<{
@@ -88,6 +89,10 @@ const App: React.FC = () => {
   useEffect(() => localStorage.setItem('wl_activities', JSON.stringify(activities)), [activities]);
   useEffect(() => localStorage.setItem('wl_predefined', JSON.stringify(predefinedActivities)), [predefinedActivities]);
   useEffect(() => localStorage.setItem('wl_weekly_hours', JSON.stringify(weeklyWorkHours)), [weeklyWorkHours]);
+  useEffect(() => {
+    if (companyLogo) localStorage.setItem('wl_company_logo', companyLogo);
+    else localStorage.removeItem('wl_company_logo');
+  }, [companyLogo]);
 
   // Actions
   const addProject = (p: Omit<Project, 'id'>) => {
@@ -210,7 +215,18 @@ const App: React.FC = () => {
           <EntryPanel projects={projects} activeActivity={activeActivity} activities={activities} predefinedActivities={predefinedActivities} weeklyWorkHours={weeklyWorkHours} onStart={startTimer} onStop={stopTimer} onManualAdd={addManualActivity} />
         )}
 
-        {view === 'dashboard' && <Dashboard activities={activities} projects={projects} predefinedActivities={predefinedActivities} weeklyWorkHours={weeklyWorkHours} onDeleteActivity={deleteActivity} onEditActivity={(a) => setEditingActivity(a)} onNavigateToEntry={() => setView('log')} />}
+        {view === 'dashboard' && (
+          <Dashboard 
+            activities={activities} 
+            projects={projects} 
+            predefinedActivities={predefinedActivities} 
+            weeklyWorkHours={weeklyWorkHours} 
+            companyLogo={companyLogo} 
+            onDeleteActivity={deleteActivity} 
+            onEditActivity={(a) => setEditingActivity(a)} 
+            onNavigateToEntry={() => setView('log')} 
+          />
+        )}
         {view === 'projects' && <ProjectManager projects={projects} onAdd={addProject} onDelete={deleteProject} onUpdate={updateProject} />}
         {view === 'options' && (
           <SettingsManager 
@@ -218,7 +234,9 @@ const App: React.FC = () => {
             predefinedActivities={predefinedActivities} 
             projects={projects} 
             activities={activities} 
+            companyLogo={companyLogo}
             onUpdateWeeklyHours={setWeeklyWorkHours} 
+            onUpdateLogo={setCompanyLogo}
             onAddPredefined={addPredefined} 
             onDeletePredefined={deletePredefined} 
             onImportFullData={importFullData} 

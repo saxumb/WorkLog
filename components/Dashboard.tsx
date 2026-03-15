@@ -1,16 +1,17 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { Activity, Project, WeeklyWorkHours, PredefinedActivity } from '../types';
-import { Zap, Pencil, Trash2, Sparkles, Loader2, Clock, History, ClipboardList, Target, Printer, Plus, ChevronDown, ChevronUp, Filter, Search, X } from 'lucide-react';
-import { summarizeWork } from '../services/geminiService';
+import { Zap, Pencil, Trash2, Clock, History, ClipboardList, Target, Printer, Plus, ChevronDown, ChevronUp, Filter, Search, X, FileSpreadsheet, Heart, ExternalLink } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 
 interface DashboardProps {
   activities: Activity[];
   projects: Project[];
   predefinedActivities: PredefinedActivity[];
   weeklyWorkHours: WeeklyWorkHours;
+  companyLogo: string | null;
   onDeleteActivity: (id: string) => void;
   onEditActivity: (activity: Activity) => void;
   onNavigateToEntry: () => void;
@@ -18,15 +19,18 @@ interface DashboardProps {
 
 type RangePreset = 'today' | 'week' | '30days' | 'month' | 'custom';
 
-const Dashboard: React.FC<DashboardProps> = ({ activities, projects, predefinedActivities, weeklyWorkHours, onDeleteActivity, onEditActivity, onNavigateToEntry }) => {
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [report, setReport] = useState<string | null>(null);
+const Dashboard: React.FC<DashboardProps> = ({ 
+  activities, projects, predefinedActivities, weeklyWorkHours, companyLogo, 
+  onDeleteActivity, onEditActivity, onNavigateToEntry 
+}) => {
   const [preset, setPreset] = useState<RangePreset>('month');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   const [selectedProjectId, setSelectedProjectId] = useState<string>('all');
   const [selectedActivityCode, setSelectedActivityCode] = useState<string>('all');
   const [isFiltersOpen, setIsFiltersOpen] = useState(false);
+  const [showDonationModal, setShowDonationModal] = useState(false);
+  const [pendingExport, setPendingExport] = useState<'pdf' | 'excel' | null>(null);
 
   const [expandedDays, setExpandedDays] = useState<Record<string, boolean>>({});
 
@@ -113,19 +117,26 @@ const Dashboard: React.FC<DashboardProps> = ({ activities, projects, predefinedA
     };
   }, [filteredActivities, weeklyWorkHours]);
 
-  const handleGenerateReport = async () => {
-    setIsGenerating(true);
-    const result = await summarizeWork(filteredActivities, projects);
-    setReport(result);
-    setIsGenerating(false);
+  const handleExportPDF = () => {
+    setPendingExport('pdf');
+    setShowDonationModal(true);
   };
 
-  const handleExportPDF = () => {
+  const executeExportPDF = () => {
     const doc = new jsPDF();
-    const title = `Report Attività: ${startDate} - ${endDate}`;
     
+    // Header with Logo
+    if (companyLogo) {
+      try {
+        // Add logo at top right
+        doc.addImage(companyLogo, 'PNG', 160, 10, 35, 35, undefined, 'FAST');
+      } catch (e) {
+        console.error("Error adding logo to PDF:", e);
+      }
+    }
+
     doc.setFontSize(18);
-    doc.text('WorkLog AI - Report Attività', 14, 22);
+    doc.text('WorkLog - Report Attività', 14, 22);
     
     doc.setFontSize(11);
     doc.setTextColor(100);
@@ -142,14 +153,6 @@ const Dashboard: React.FC<DashboardProps> = ({ activities, projects, predefinedA
     doc.text(`ROL/FE: ${Math.round(stats.totalMissingHours * 10) / 10}h`, 14, 68);
     doc.text(`Progetti: ${stats.projectsCount}`, 14, 74);
 
-    if (report) {
-      doc.setFontSize(12);
-      doc.text('Analisi AI:', 14, 86);
-      doc.setFontSize(9);
-      const splitReport = doc.splitTextToSize(report, 180);
-      doc.text(splitReport, 14, 94);
-    }
-
     const tableData = filteredActivities.map(a => {
       const project = projects.find(p => p.id === a.projectId);
       return [
@@ -162,7 +165,7 @@ const Dashboard: React.FC<DashboardProps> = ({ activities, projects, predefinedA
     });
 
     autoTable(doc, {
-      startY: report ? (doc as any).lastAutoTable?.finalY || 130 : 86,
+      startY: 86,
       head: [['Data', 'Progetto', 'Codice', 'Descrizione', 'Durata']],
       body: tableData,
       theme: 'striped',
@@ -171,6 +174,41 @@ const Dashboard: React.FC<DashboardProps> = ({ activities, projects, predefinedA
     });
 
     doc.save(`worklog_report_${startDate}_${endDate}.pdf`);
+  };
+
+  const handleExportExcel = () => {
+    setPendingExport('excel');
+    setShowDonationModal(true);
+  };
+
+  const executeExportExcel = () => {
+    const data = filteredActivities.map(a => {
+      const project = projects.find(p => p.id === a.projectId);
+      return {
+        'Data': formatDateLabel(a.startTime),
+        'Progetto': project?.name || 'N/A',
+        'Cliente': project?.client || 'N/A',
+        'Codice Attività': a.activityCode || '---',
+        'Descrizione': a.description || '',
+        'Durata': formatDuration(a.durationSeconds),
+        'Secondi': a.durationSeconds
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Attività');
+    XLSX.writeFile(workbook, `worklog_export_${startDate}_${endDate}.xlsx`);
+  };
+
+  const handleConfirmExport = () => {
+    if (pendingExport === 'pdf') {
+      executeExportPDF();
+    } else if (pendingExport === 'excel') {
+      executeExportExcel();
+    }
+    setShowDonationModal(false);
+    setPendingExport(null);
   };
 
   const formatDuration = (seconds: number) => {
@@ -365,16 +403,8 @@ const Dashboard: React.FC<DashboardProps> = ({ activities, projects, predefinedA
             </div>
           </div>
 
-          {/* AI Report CTA in-line if screen is large enough */}
-          <div className="p-5 flex items-center justify-center bg-slate-50/50 gap-2">
-            <button 
-              onClick={handleGenerateReport} 
-              disabled={isGenerating || filteredActivities.length === 0} 
-              className="flex-1 md:flex-none flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black uppercase rounded-2xl shadow-lg transition-all disabled:opacity-30 disabled:cursor-not-allowed whitespace-nowrap"
-            >
-              {isGenerating ? <Loader2 className="animate-spin" size={14} /> : <Sparkles size={14} />} 
-              Analisi AI
-            </button>
+          {/* Report CTA in-line if screen is large enough */}
+          <div className="p-5 flex flex-wrap items-center justify-center bg-slate-50/50 gap-2">
             <button 
               onClick={handleExportPDF} 
               disabled={filteredActivities.length === 0} 
@@ -383,22 +413,16 @@ const Dashboard: React.FC<DashboardProps> = ({ activities, projects, predefinedA
               <Printer size={14} /> 
               Esporta PDF
             </button>
+            <button 
+              onClick={handleExportExcel} 
+              disabled={filteredActivities.length === 0} 
+              className="flex-1 md:flex-none flex items-center gap-2 px-6 py-3 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-[10px] font-black uppercase rounded-2xl shadow-sm transition-all disabled:opacity-30 disabled:cursor-not-allowed whitespace-nowrap"
+            >
+              <FileSpreadsheet size={14} className="text-emerald-600" /> 
+              Esporta Excel
+            </button>
           </div>
         </div>
-
-      {/* AI Report Section */}
-      {report && (
-        <div className="p-8 bg-indigo-50/40 rounded-[2.5rem] border border-indigo-100 animate-in slide-in-from-top-4 duration-500 relative group">
-          <button onClick={() => setReport(null)} className="absolute top-6 right-6 text-indigo-300 hover:text-indigo-600 transition-colors">
-            <Trash2 size={16} />
-          </button>
-          <div className="flex items-center gap-3 mb-4 text-indigo-700">
-            <Sparkles size={20} className="animate-pulse" />
-            <h3 className="text-xs font-black uppercase tracking-widest">Report Generato da Gemini</h3>
-          </div>
-          <p className="text-sm text-indigo-900/80 leading-relaxed whitespace-pre-wrap font-medium">{report}</p>
-        </div>
-      )}
 
       {/* Main List Section */}
       <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
@@ -498,6 +522,58 @@ const Dashboard: React.FC<DashboardProps> = ({ activities, projects, predefinedA
           )}
         </div>
       </div>
+
+      {/* Donation Modal */}
+      {showDonationModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="bg-white rounded-[2.5rem] w-full max-w-md overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
+            <div className="p-8 bg-indigo-600 text-white text-center relative">
+              <button 
+                onClick={() => setShowDonationModal(false)}
+                className="absolute top-4 right-4 p-2 hover:bg-white/10 rounded-full transition-colors"
+              >
+                <X size={20} />
+              </button>
+              <div className="w-20 h-20 bg-white/20 rounded-3xl flex items-center justify-center mx-auto mb-4">
+                <Heart size={40} fill="currentColor" className="text-white" />
+              </div>
+              <h3 className="text-xl font-black uppercase tracking-tight">Supporta il Progetto</h3>
+              <p className="text-white/80 text-xs font-bold uppercase tracking-widest mt-2">Aiutaci a mantenere l'app gratuita</p>
+            </div>
+            
+            <div className="p-8 space-y-6">
+              <div className="space-y-4">
+                <p className="text-sm text-slate-600 leading-relaxed text-center">
+                  Spero che questa funzione ti sia utile! Gestire questo strumento richiede tempo. Se apprezzi il mio lavoro, considera di offrirmi un caffè.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <a 
+                  href="https://www.paypal.com/donate" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-xs flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
+                >
+                  <ExternalLink size={16} />
+                  Fai una Donazione
+                </a>
+                
+                <button 
+                  onClick={handleConfirmExport}
+                  className="w-full py-4 bg-slate-50 text-slate-500 rounded-2xl font-black uppercase text-[10px] hover:bg-slate-100 transition-all"
+                >
+                  Continua con l'esportazione
+                </button>
+              </div>
+              
+              <p className="text-[9px] text-slate-400 text-center uppercase font-bold tracking-widest">
+                Grazie per il tuo supporto! ❤️
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

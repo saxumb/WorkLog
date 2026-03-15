@@ -1,5 +1,5 @@
 {
-  "name": "worklog-ai---timesheet-master",
+  "name": "worklog---timesheet-master",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -19,7 +19,8 @@
     "react-dom": "^19.2.4",
     "recharts": "^3.7.0",
     "tailwindcss": "^4.2.1",
-    "vite-plugin-pwa": "^1.2.0"
+    "vite-plugin-pwa": "^1.2.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

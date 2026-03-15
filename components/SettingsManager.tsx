@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useMemo } from 'react';
-import { Clock, ListTodo, Plus, Trash2, Tag, Download, Upload, ShieldCheck, Save, ChevronDown, ChevronUp } from 'lucide-react';
+import { Clock, ListTodo, Plus, Trash2, Tag, Download, Upload, ShieldCheck, Save, ChevronDown, ChevronUp, Image as ImageIcon, X } from 'lucide-react';
 import { PredefinedActivity, Project, Activity, WeeklyWorkHours } from '../types';
 
 interface SettingsManagerProps {
@@ -8,7 +8,9 @@ interface SettingsManagerProps {
   predefinedActivities: PredefinedActivity[];
   projects: Project[];
   activities: Activity[];
+  companyLogo: string | null;
   onUpdateWeeklyHours: (hours: WeeklyWorkHours) => void;
+  onUpdateLogo: (logo: string | null) => void;
   onAddPredefined: (pa: Omit<PredefinedActivity, 'id'>) => void;
   onDeletePredefined: (id: string) => void;
   onImportFullData: (data: any, confirm: boolean) => void;
@@ -26,15 +28,17 @@ const DAYS_OF_WEEK: { key: keyof WeeklyWorkHours; label: string }[] = [
 ];
 
 const SettingsManager: React.FC<SettingsManagerProps> = ({ 
-  weeklyWorkHours, predefinedActivities, projects, activities,
-  onUpdateWeeklyHours, onAddPredefined, onDeletePredefined, onImportFullData, onManualExport
+  weeklyWorkHours, predefinedActivities, projects, activities, companyLogo,
+  onUpdateWeeklyHours, onUpdateLogo, onAddPredefined, onDeletePredefined, onImportFullData, onManualExport
 }) => {
   const [newCode, setNewCode] = useState('');
   const [newDesc, setNewDesc] = useState('');
   const [isWeeklyHoursOpen, setIsWeeklyHoursOpen] = useState(false);
   const [isGlossaryOpen, setIsGlossaryOpen] = useState(false);
   const [isSecurityOpen, setIsSecurityOpen] = useState(false);
+  const [isLogoOpen, setIsLogoOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   const totalWeeklyHours = useMemo(() => {
     return (Object.values(weeklyWorkHours) as number[]).reduce((acc, curr) => acc + curr, 0);
@@ -66,6 +70,19 @@ const SettingsManager: React.FC<SettingsManagerProps> = ({
       }
     };
     reader.readAsText(file); e.target.value = '';
+  };
+
+  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string;
+      onUpdateLogo(base64);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
   };
 
   return (
@@ -206,6 +223,64 @@ const SettingsManager: React.FC<SettingsManagerProps> = ({
                   <Upload size={24} className="group-hover:-translate-y-0.5 transition-transform" />
                 </button>
                 <input type="file" ref={fileInputRef} onChange={handleFileChange} accept=".json" className="hidden" />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Logo Section */}
+        <div className="bg-white rounded-[2rem] p-6 border border-slate-200 shadow-sm space-y-4">
+          <div 
+            className="flex items-center justify-between cursor-pointer group"
+            onClick={() => setIsLogoOpen(!isLogoOpen)}
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 bg-rose-50 text-rose-600 rounded-xl group-hover:bg-rose-100 transition-colors"><ImageIcon size={20} /></div>
+              <div>
+                <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest">Personalizzazione PDF</h3>
+                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">
+                  Logo Aziendale per i Report
+                </p>
+              </div>
+            </div>
+            <div className="text-slate-300 group-hover:text-rose-600 transition-colors">
+              {isLogoOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+            </div>
+          </div>
+
+          {isLogoOpen && (
+            <div className="space-y-4 animate-in fade-in zoom-in-95 duration-200">
+              <div className="flex flex-col md:flex-row items-center gap-6 p-6 bg-slate-50 rounded-[2rem] border border-slate-100">
+                <div className="relative group">
+                  <div className="w-32 h-32 bg-white border-2 border-dashed border-slate-200 rounded-2xl flex items-center justify-center overflow-hidden">
+                    {companyLogo ? (
+                      <img src={companyLogo} alt="Logo" className="w-full h-full object-contain p-2" />
+                    ) : (
+                      <ImageIcon size={32} className="text-slate-200" />
+                    )}
+                  </div>
+                  {companyLogo && (
+                    <button 
+                      onClick={() => onUpdateLogo(null)}
+                      className="absolute -top-2 -right-2 p-1.5 bg-rose-500 text-white rounded-full shadow-lg hover:bg-rose-600 transition-colors"
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
+                </div>
+                <div className="flex-1 space-y-3 text-center md:text-left">
+                  <h4 className="text-xs font-black text-slate-800 uppercase">Logo Aziendale</h4>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase leading-relaxed">
+                    Carica un'immagine (PNG/JPG) per personalizzare i tuoi report PDF. Verrà visualizzata in alto a destra.
+                  </p>
+                  <button 
+                    onClick={() => logoInputRef.current?.click()}
+                    className="px-6 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl text-[10px] font-black uppercase hover:bg-slate-50 transition-all shadow-sm"
+                  >
+                    {companyLogo ? 'Cambia Logo' : 'Seleziona Logo'}
+                  </button>
+                  <input type="file" ref={logoInputRef} onChange={handleLogoChange} accept="image/*" className="hidden" />
+                </div>
               </div>
             </div>
           )}

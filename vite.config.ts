@@ -19,9 +19,9 @@ export default defineConfig(({ mode }) => {
           registerType: 'autoUpdate',
           includeAssets: ['icon-192x192.png', 'icon-512x512.png'],
           manifest: {
-            name: 'WorkLog AI',
+            name: 'WorkLog',
             short_name: 'WorkLog',
-            description: 'Gestione presenze e commesse con intelligenza artificiale',
+            description: 'Gestione presenze e commesse professionale',
             theme_color: '#4f46e5',
             background_color: '#f8fafc',
             display: 'standalone',

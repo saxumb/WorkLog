@@ -170,7 +170,7 @@ const EntryPanel: React.FC<EntryPanelProps> = ({ projects, activeActivity, activ
           Rapido
         </button>
         <button onClick={() => setMode('smart')} className={`px-4 py-1.5 rounded-[20px] text-[11px] font-bold transition-all ${mode === 'smart' ? 'text-indigo-600' : 'text-slate-500'}`}>
-          Smart AI
+          Smart
         </button>
         <button onClick={() => setMode('timer')} className={`px-4 py-1.5 rounded-[20px] text-[11px] font-bold transition-all ${mode === 'timer' ? 'text-indigo-600' : 'text-slate-500'}`}>
           Timer
