@@ -550,7 +550,7 @@ const Dashboard: React.FC<DashboardProps> = ({
 
               <div className="flex flex-col gap-3">
                 <a 
-                  href="https://www.paypal.com/donate" 
+                  href="https://www.paypal.me/saxumb" 
                   target="_blank" 
                   rel="noopener noreferrer"
                   className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-xs flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
