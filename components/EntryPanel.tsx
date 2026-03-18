@@ -135,9 +135,7 @@ const EntryPanel: React.FC<EntryPanelProps> = ({ projects, activeActivity, activ
   const formatHoursDisplay = (h: number) => {
     const hours = Math.floor(h);
     const minutes = Math.round((h - hours) * 60);
-    if (hours === 0) return `${minutes} min`;
-    if (minutes === 0) return `${hours} ore`;
-    return `${hours} ore ${minutes} min`;
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
   };
 
   if (activeActivity) {

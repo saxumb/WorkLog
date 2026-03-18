@@ -123,6 +123,12 @@ const Dashboard: React.FC<DashboardProps> = ({
     setShowDonationModal(true);
   };
 
+  const formatHHMM = (hours: number) => {
+    const h = Math.floor(Math.abs(hours));
+    const m = Math.round((Math.abs(hours) - h) * 60);
+    return `${hours < 0 ? '-' : ''}${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+  };
+
   const executeExportPDF = () => {
     const doc = new jsPDF();
     
@@ -158,9 +164,9 @@ const Dashboard: React.FC<DashboardProps> = ({
     doc.setTextColor(0);
     doc.text('Riepilogo:', 14, startY + 18);
     doc.setFontSize(10);
-    doc.text(`Ore Totali: ${Math.round(stats.totalHours * 10) / 10}h`, 14, startY + 26);
-    doc.text(`Straordinari: ${Math.round(stats.overtime * 10) / 10}h`, 14, startY + 32);
-    doc.text(`ROL/FE: ${Math.round(stats.totalMissingHours * 10) / 10}h`, 14, startY + 38);
+    doc.text(`Ore Totali: ${formatHHMM(stats.totalHours)}`, 14, startY + 26);
+    doc.text(`Straordinari: ${formatHHMM(stats.overtime)}`, 14, startY + 32);
+    doc.text(`ROL/FE: ${formatHHMM(stats.totalMissingHours)}`, 14, startY + 38);
     doc.text(`Progetti: ${stats.projectsCount}`, 14, startY + 44);
 
     const tableData = filteredActivities.map(a => {
@@ -229,7 +235,7 @@ const Dashboard: React.FC<DashboardProps> = ({
   const formatDuration = (seconds: number) => {
     const h = Math.floor(seconds / 3600);
     const m = Math.floor((seconds % 3600) / 60);
-    return `${h}h ${m}m`;
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
   };
 
   const formatDateLabel = (dateStr: string) => {
@@ -370,8 +376,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             <div>
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Tempo Totale</p>
               <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-black text-slate-800">{Math.round(stats.totalHours * 10) / 10}</span>
-                <span className="text-xs font-bold text-slate-400">h</span>
+                <span className="text-2xl font-black text-slate-800">{formatHHMM(stats.totalHours)}</span>
               </div>
             </div>
           </div>
@@ -384,8 +389,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             <div>
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Straordinari</p>
               <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-black text-amber-500">{Math.round(stats.overtime * 10) / 10}</span>
-                <span className="text-xs font-bold text-slate-400">h</span>
+                <span className="text-2xl font-black text-amber-500">{formatHHMM(stats.overtime)}</span>
               </div>
             </div>
           </div>
@@ -398,8 +402,7 @@ const Dashboard: React.FC<DashboardProps> = ({
             <div>
               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">ROL/FE</p>
               <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-black text-rose-500">{Math.round(stats.totalMissingHours * 10) / 10}</span>
-                <span className="text-xs font-bold text-slate-400">h</span>
+                <span className="text-2xl font-black text-rose-500">{formatHHMM(stats.totalMissingHours)}</span>
               </div>
             </div>
           </div>
@@ -478,7 +481,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                     <>
                       <div className="h-6 w-px bg-slate-100 hidden md:block"></div>
                       <div className="flex flex-col items-center justify-center w-16 md:w-20">
-                        <span className="text-[11px] md:text-xs font-black text-rose-500 text-center">-{Math.round(group.missingHours * 10) / 10}h</span>
+                        <span className="text-[11px] md:text-xs font-black text-rose-500 text-center">-{formatHHMM(group.missingHours)}</span>
                       </div>
                     </>
                   )}
@@ -486,7 +489,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                     <>
                       <div className="h-6 w-px bg-slate-100 hidden md:block"></div>
                       <div className="flex flex-col items-center justify-center w-16 md:w-20">
-                        <span className="text-[11px] md:text-xs font-black text-amber-500 text-center">+{Math.round(group.overtimeHours * 10) / 10}h</span>
+                        <span className="text-[11px] md:text-xs font-black text-amber-500 text-center">+{formatHHMM(group.overtimeHours)}</span>
                       </div>
                     </>
                   )}

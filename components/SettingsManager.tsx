@@ -87,6 +87,12 @@ const SettingsManager: React.FC<SettingsManagerProps> = ({
     e.target.value = '';
   };
 
+  const formatHHMM = (hours: number) => {
+    const h = Math.floor(Math.abs(hours));
+    const m = Math.round((Math.abs(hours) - h) * 60);
+    return `${hours < 0 ? '-' : ''}${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500 max-w-3xl mx-auto pb-24 px-4 md:px-0">
       <div className="flex justify-between items-end">
@@ -108,7 +114,7 @@ const SettingsManager: React.FC<SettingsManagerProps> = ({
               <div>
                 <h3 className="text-xs font-black text-slate-800 uppercase tracking-widest">Soglia Ore Settimanali</h3>
                 <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter">
-                  {isWeeklyHoursOpen ? 'Limite ore per giorno' : `Totale settimanale: ${totalWeeklyHours}h`}
+                  {isWeeklyHoursOpen ? 'Limite ore per giorno' : `Totale settimanale: ${formatHHMM(totalWeeklyHours)}`}
                 </p>
               </div>
             </div>

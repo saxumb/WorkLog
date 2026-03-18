@@ -37,7 +37,7 @@ const EditActivityModal: React.FC<EditActivityModalProps> = ({ activity, project
   const formatHoursDisplay = (h: number) => {
     const hours = Math.floor(h);
     const minutes = Math.round((h - hours) * 60);
-    return hours === 0 ? `${minutes} min` : minutes === 0 ? `${hours} ore` : `${hours} ore ${minutes} min`;
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
   };
 
   return (
