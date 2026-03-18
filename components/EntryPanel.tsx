@@ -28,10 +28,14 @@ const EntryPanel: React.FC<EntryPanelProps> = ({ projects, activeActivity, activ
     return weeklyWorkHours[dayName] || 8;
   }, [date, weeklyWorkHours]);
 
-  const [durationHours, setDurationHours] = useState(8); 
+  const [inputHours, setInputHours] = useState<number | string>(8);
+  const [inputMinutes, setInputMinutes] = useState<number | string>(0);
 
   useEffect(() => {
-    setDurationHours(defaultDuration);
+    const h = Math.floor(defaultDuration);
+    const m = Math.round((defaultDuration - h) * 60);
+    setInputHours(h);
+    setInputMinutes(m);
   }, [defaultDuration]);
   const [smartInput, setSmartInput] = useState('');
   const [isParsing, setIsParsing] = useState(false);
@@ -68,8 +72,10 @@ const EntryPanel: React.FC<EntryPanelProps> = ({ projects, activeActivity, activ
   }, [activeActivity]);
 
   const totalManualSeconds = useMemo(() => {
-    return durationHours * 3600;
-  }, [durationHours]);
+    const h = typeof inputHours === 'string' ? (parseInt(inputHours) || 0) : inputHours;
+    const m = typeof inputMinutes === 'string' ? (parseInt(inputMinutes) || 0) : inputMinutes;
+    return (h * 3600) + (m * 60);
+  }, [inputHours, inputMinutes]);
 
   const toggleListening = () => {
     if (isListening) {
@@ -103,7 +109,8 @@ const EntryPanel: React.FC<EntryPanelProps> = ({ projects, activeActivity, activ
     setProjectId('');
     setActivityCode('');
     setDescription('');
-    setDurationHours(8);
+    setInputHours(8);
+    setInputMinutes(0);
     
     // Attiva animazione di successo
     setShowSuccess(true);
@@ -143,9 +150,16 @@ const EntryPanel: React.FC<EntryPanelProps> = ({ projects, activeActivity, activ
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{currentProject?.name}</span>
           </div>
           <div className="flex flex-col md:flex-row md:items-baseline gap-2">
-            <span className="text-[11px] font-black text-slate-800 tracking-tight bg-slate-100 px-2 py-0.5 rounded border border-slate-200 w-fit">
-              {activeActivity.activityCode}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-black text-slate-800 tracking-tight bg-slate-100 px-2 py-0.5 rounded border border-slate-200 w-fit">
+                {activeActivity.activityCode}
+              </span>
+              {predefinedActivities.find(pa => pa.code === activeActivity.activityCode) && (
+                <span className="text-[10px] font-bold text-indigo-500 uppercase">
+                  {predefinedActivities.find(pa => pa.code === activeActivity.activityCode)?.description}
+                </span>
+              )}
+            </div>
             <h3 className="text-lg font-medium text-slate-800">
               {activeActivity.description || "In corso..."}
             </h3>
@@ -232,25 +246,73 @@ const EntryPanel: React.FC<EntryPanelProps> = ({ projects, activeActivity, activ
 
               <div className="md:col-span-12 lg:col-span-4 space-y-4 bg-slate-50/50 p-6 rounded-[2rem] border border-slate-100">
                 <div className="text-center">
-                  <label className="text-[10px] font-black text-slate-400 uppercase block mb-1">5. Durata (Step 30min)</label>
+                  <label className="text-[10px] font-black text-slate-400 uppercase block mb-1">5. Durata</label>
                   <div className="flex items-center justify-center gap-4 mb-2">
                     <button 
-                      onClick={() => setDurationHours(prev => Math.max(0.5, prev - 0.5))}
+                      onClick={() => {
+                        const totalMins = (typeof inputHours === 'string' ? parseInt(inputHours) || 0 : inputHours) * 60 + (typeof inputMinutes === 'string' ? parseInt(inputMinutes) || 0 : inputMinutes);
+                        const newTotal = Math.max(0, totalMins - 30);
+                        setInputHours(Math.floor(newTotal / 60));
+                        setInputMinutes(newTotal % 60);
+                      }}
                       className="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-full text-slate-400 hover:text-rose-500 hover:border-rose-200 transition-all shadow-sm"
                     >
                       <Minus size={16} />
                     </button>
-                    <div className="text-3xl font-black text-indigo-600">{durationHours.toFixed(1)}<span className="text-sm ml-1 text-slate-400">h</span></div>
+                    <div className="flex items-center justify-center bg-white border border-slate-200 rounded-2xl px-4 py-2 shadow-sm focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-50 transition-all">
+                      <div className="flex items-center">
+                        <input 
+                          type="number" 
+                          min="0" 
+                          max="24"
+                          placeholder="hh"
+                          value={inputHours} 
+                          onChange={(e) => setInputHours(e.target.value)}
+                          onFocus={(e) => e.target.select()}
+                          className="w-10 text-2xl font-black text-indigo-600 bg-transparent border-none outline-none text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        />
+                        <span className="text-xl font-black text-indigo-300 mx-1">:</span>
+                        <input 
+                          type="number" 
+                          min="0" 
+                          max="59"
+                          placeholder="mm"
+                          value={inputMinutes} 
+                          onChange={(e) => {
+                            const val = e.target.value === '' ? '' : Math.min(59, parseInt(e.target.value) || 0);
+                            setInputMinutes(val);
+                          }}
+                          onFocus={(e) => e.target.select()}
+                          className="w-10 text-2xl font-black text-indigo-600 bg-transparent border-none outline-none text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        />
+                      </div>
+                    </div>
                     <button 
-                      onClick={() => setDurationHours(prev => Math.min(18, prev + 0.5))}
+                      onClick={() => {
+                        const totalMins = (typeof inputHours === 'string' ? parseInt(inputHours) || 0 : inputHours) * 60 + (typeof inputMinutes === 'string' ? parseInt(inputMinutes) || 0 : inputMinutes);
+                        const newTotal = Math.min(1440, totalMins + 30);
+                        setInputHours(Math.floor(newTotal / 60));
+                        setInputMinutes(newTotal % 60);
+                      }}
                       className="w-8 h-8 flex items-center justify-center bg-white border border-slate-200 rounded-full text-slate-400 hover:text-emerald-500 hover:border-emerald-200 transition-all shadow-sm"
                     >
                       <Plus size={16} />
                     </button>
                   </div>
-                  <div className="text-[11px] font-bold text-slate-400 uppercase">{formatHoursDisplay(durationHours)}</div>
                 </div>
-                <input type="range" min="0.5" max="18" step="0.5" value={durationHours} onChange={(e) => setDurationHours(parseFloat(e.target.value))} className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600" />
+                <input 
+                  type="range" 
+                  min="0.5" 
+                  max="18" 
+                  step="0.5" 
+                  value={totalManualSeconds / 3600} 
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value);
+                    setInputHours(Math.floor(val));
+                    setInputMinutes(Math.round((val - Math.floor(val)) * 60));
+                  }} 
+                  className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600" 
+                />
                 
                 <button 
                   onClick={handleManualSubmit} 
@@ -286,6 +348,11 @@ const EntryPanel: React.FC<EntryPanelProps> = ({ projects, activeActivity, activ
                       <span className="text-indigo-600 uppercase">{project?.name || 'Commessa'}</span>
                       <span className="text-slate-300">|</span>
                       <span className="font-black">[{sug.activityCode}]</span>
+                      {predefinedActivities.find(pa => pa.code === sug.activityCode) && (
+                        <span className="text-indigo-400 uppercase">
+                          {predefinedActivities.find(pa => pa.code === sug.activityCode)?.description}
+                        </span>
+                      )}
                       {sug.description && <span className="italic opacity-60 truncate max-w-[100px]">- {sug.description}</span>}
                     </button>
                   );

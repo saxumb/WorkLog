@@ -9,8 +9,10 @@ interface SettingsManagerProps {
   projects: Project[];
   activities: Activity[];
   companyLogo: string | null;
+  companyHeader: string;
   onUpdateWeeklyHours: (hours: WeeklyWorkHours) => void;
   onUpdateLogo: (logo: string | null) => void;
+  onUpdateHeader: (header: string) => void;
   onAddPredefined: (pa: Omit<PredefinedActivity, 'id'>) => void;
   onDeletePredefined: (id: string) => void;
   onImportFullData: (data: any, confirm: boolean) => void;
@@ -28,8 +30,8 @@ const DAYS_OF_WEEK: { key: keyof WeeklyWorkHours; label: string }[] = [
 ];
 
 const SettingsManager: React.FC<SettingsManagerProps> = ({ 
-  weeklyWorkHours, predefinedActivities, projects, activities, companyLogo,
-  onUpdateWeeklyHours, onUpdateLogo, onAddPredefined, onDeletePredefined, onImportFullData, onManualExport
+  weeklyWorkHours, predefinedActivities, projects, activities, companyLogo, companyHeader,
+  onUpdateWeeklyHours, onUpdateLogo, onUpdateHeader, onAddPredefined, onDeletePredefined, onImportFullData, onManualExport
 }) => {
   const [newCode, setNewCode] = useState('');
   const [newDesc, setNewDesc] = useState('');
@@ -281,6 +283,19 @@ const SettingsManager: React.FC<SettingsManagerProps> = ({
                   </button>
                   <input type="file" ref={logoInputRef} onChange={handleLogoChange} accept="image/*" className="hidden" />
                 </div>
+              </div>
+
+              <div className="space-y-3 bg-slate-50 p-6 rounded-[2rem] border border-slate-100">
+                <label className="text-xs font-black text-slate-800 uppercase ml-1 block">Intestazione Report (Dati Aziendali)</label>
+                <textarea 
+                  value={companyHeader}
+                  onChange={(e) => onUpdateHeader(e.target.value)}
+                  placeholder="Inserisci qui i dati della tua azienda, P.IVA, indirizzo, ecc. che appariranno in alto a sinistra nel PDF."
+                  className="w-full p-4 bg-white border border-slate-200 rounded-2xl text-xs font-medium outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 transition-all min-h-[100px] resize-none"
+                />
+                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-tighter ml-1">
+                  Questo testo apparirà nell'angolo in alto a sinistra del PDF esportato.
+                </p>
               </div>
             </div>
           )}

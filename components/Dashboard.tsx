@@ -12,6 +12,7 @@ interface DashboardProps {
   predefinedActivities: PredefinedActivity[];
   weeklyWorkHours: WeeklyWorkHours;
   companyLogo: string | null;
+  companyHeader: string;
   onDeleteActivity: (id: string) => void;
   onEditActivity: (activity: Activity) => void;
   onNavigateToEntry: () => void;
@@ -20,7 +21,7 @@ interface DashboardProps {
 type RangePreset = 'today' | 'week' | '30days' | 'month' | 'custom';
 
 const Dashboard: React.FC<DashboardProps> = ({ 
-  activities, projects, predefinedActivities, weeklyWorkHours, companyLogo, 
+  activities, projects, predefinedActivities, weeklyWorkHours, companyLogo, companyHeader,
   onDeleteActivity, onEditActivity, onNavigateToEntry 
 }) => {
   const [preset, setPreset] = useState<RangePreset>('month');
@@ -138,34 +139,46 @@ const Dashboard: React.FC<DashboardProps> = ({
     doc.setFontSize(18);
     doc.text('WorkLog - Report Attività', 14, 22);
     
+    // Company Header Text
+    if (companyHeader) {
+      doc.setFontSize(8);
+      doc.setTextColor(120);
+      const headerLines = doc.splitTextToSize(companyHeader, 80);
+      doc.text(headerLines, 14, 30);
+    }
+
     doc.setFontSize(11);
     doc.setTextColor(100);
-    doc.text(`Periodo: ${formatDateLabel(startDate)} - ${formatDateLabel(endDate)}`, 14, 30);
-    doc.text(`Generato il: ${new Date().toLocaleString('it-IT')}`, 14, 36);
+    const startY = companyHeader ? 30 + (doc.splitTextToSize(companyHeader, 80).length * 4) + 5 : 30;
+    doc.text(`Periodo: ${formatDateLabel(startDate)} - ${formatDateLabel(endDate)}`, 14, startY);
+    doc.text(`Generato il: ${new Date().toLocaleString('it-IT')}`, 14, startY + 6);
 
     // Stats
     doc.setFontSize(12);
     doc.setTextColor(0);
-    doc.text('Riepilogo:', 14, 48);
+    doc.text('Riepilogo:', 14, startY + 18);
     doc.setFontSize(10);
-    doc.text(`Ore Totali: ${Math.round(stats.totalHours * 10) / 10}h`, 14, 56);
-    doc.text(`Straordinari: ${Math.round(stats.overtime * 10) / 10}h`, 14, 62);
-    doc.text(`ROL/FE: ${Math.round(stats.totalMissingHours * 10) / 10}h`, 14, 68);
-    doc.text(`Progetti: ${stats.projectsCount}`, 14, 74);
+    doc.text(`Ore Totali: ${Math.round(stats.totalHours * 10) / 10}h`, 14, startY + 26);
+    doc.text(`Straordinari: ${Math.round(stats.overtime * 10) / 10}h`, 14, startY + 32);
+    doc.text(`ROL/FE: ${Math.round(stats.totalMissingHours * 10) / 10}h`, 14, startY + 38);
+    doc.text(`Progetti: ${stats.projectsCount}`, 14, startY + 44);
 
     const tableData = filteredActivities.map(a => {
       const project = projects.find(p => p.id === a.projectId);
+      const predefined = predefinedActivities.find(pa => pa.code === a.activityCode);
+      const activityLabel = predefined ? `${a.activityCode} - ${predefined.description}` : (a.activityCode || '---');
+      
       return [
         formatDateLabel(a.startTime),
         project?.name || 'N/A',
-        a.activityCode || '---',
+        activityLabel,
         a.description || '',
         formatDuration(a.durationSeconds)
       ];
     });
 
     autoTable(doc, {
-      startY: 86,
+      startY: startY + 56,
       head: [['Data', 'Progetto', 'Codice', 'Descrizione', 'Durata']],
       body: tableData,
       theme: 'striped',
@@ -184,12 +197,14 @@ const Dashboard: React.FC<DashboardProps> = ({
   const executeExportExcel = () => {
     const data = filteredActivities.map(a => {
       const project = projects.find(p => p.id === a.projectId);
+      const predefined = predefinedActivities.find(pa => pa.code === a.activityCode);
       return {
         'Data': formatDateLabel(a.startTime),
         'Progetto': project?.name || 'N/A',
         'Cliente': project?.client || 'N/A',
         'Codice Attività': a.activityCode || '---',
-        'Descrizione': a.description || '',
+        'Descrizione Codice': predefined?.description || '',
+        'Note': a.description || '',
         'Durata': formatDuration(a.durationSeconds),
         'Secondi': a.durationSeconds
       };
@@ -483,6 +498,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                   <div className="h-px bg-slate-50 mb-2"></div>
                   {group.activities.map((activity) => {
                     const project = projects.find(p => p.id === activity.projectId);
+                    const predefined = predefinedActivities.find(pa => pa.code === activity.activityCode);
                     return (
                       <div key={activity.id} className="bg-slate-50/50 rounded-xl p-3 border border-slate-100 flex flex-col md:flex-row md:items-center gap-3">
                         <div className="flex flex-col flex-1 min-w-0">
@@ -490,13 +506,22 @@ const Dashboard: React.FC<DashboardProps> = ({
                             <div className={`w-2 h-2 rounded-full ${project?.color || 'bg-slate-300'}`}></div>
                             <span className="text-[10px] font-black text-slate-700 truncate uppercase tracking-tight">{project?.name || 'Senza Commessa'}</span>
                           </div>
-                          <div className="flex items-baseline gap-2 pl-3.5 border-l-2 border-slate-200">
-                            <span className="text-[9px] font-black text-slate-500 shrink-0">
-                              {activity.activityCode}
-                            </span>
-                            <p className="text-[11px] text-slate-500 italic truncate">
-                              {activity.description || "Nessuna descrizione"}
-                            </p>
+                          <div className="flex items-center gap-2 pl-3.5 border-l-2 border-slate-200">
+                            <div className="flex flex-col">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-black text-slate-600 shrink-0 bg-slate-100 px-1.5 py-0.5 rounded">
+                                  {activity.activityCode}
+                                </span>
+                                {predefined && (
+                                  <span className="text-[10px] font-bold text-indigo-500 uppercase">
+                                    {predefined.description}
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-[11px] text-slate-500 font-medium truncate mt-0.5">
+                                {activity.description || "Nessuna nota"}
+                              </span>
+                            </div>
                           </div>
                         </div>
                         <div className="flex items-center justify-between md:justify-end gap-4">

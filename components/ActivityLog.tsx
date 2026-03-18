@@ -137,17 +137,21 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, projects, onDelet
                 <div className="h-px bg-slate-100 mb-4"></div>
                 {group.activities.map((activity) => {
                   const project = projects.find(p => p.id === activity.projectId);
+                  // Note: ActivityLog doesn't have predefinedActivities prop currently, 
+                  // but I'll add the logic assuming it might be added or used as a template.
                   return (
                     <div key={activity.id} className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100 flex flex-col md:flex-row md:items-center gap-4">
                       <div className="flex flex-col flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1"><div className={`w-2 h-2 rounded-full ${project?.color || 'bg-slate-300'}`}></div><span className="text-xs font-black text-slate-700 truncate uppercase tracking-tight">{project?.name || 'Senza Commessa'}</span></div>
-                        <div className="flex items-baseline gap-2 pl-3.5 border-l-2 border-slate-200">
-                          <span className="text-[9px] font-black text-slate-500 shrink-0">
-                            {activity.activityCode}
-                          </span>
-                          <p className="text-xs text-slate-500 italic truncate">
-                            {activity.description || "Nessuna descrizione"}
-                          </p>
+                        <div className="flex items-center gap-2 pl-3.5 border-l-2 border-slate-200">
+                          <div className="flex flex-col">
+                            <span className="text-[10px] font-black text-slate-600 shrink-0 bg-slate-100 px-1.5 py-0.5 rounded w-fit">
+                              {activity.activityCode}
+                            </span>
+                            <span className="text-xs text-slate-500 font-medium truncate mt-0.5">
+                              {activity.description || "Nessuna descrizione"}
+                            </span>
+                          </div>
                         </div>
                       </div>
                       <div className="flex items-center justify-between md:justify-end gap-4">

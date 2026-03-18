@@ -70,6 +70,7 @@ const App: React.FC = () => {
     return DEFAULT_WEEKLY_HOURS;
   });
   const [companyLogo, setCompanyLogo] = useState<string | null>(() => localStorage.getItem('wl_company_logo'));
+  const [companyHeader, setCompanyHeader] = useState<string>(() => localStorage.getItem('wl_company_header') || '');
 
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
   const [confirmConfig, setConfirmConfig] = useState<{
@@ -93,6 +94,9 @@ const App: React.FC = () => {
     if (companyLogo) localStorage.setItem('wl_company_logo', companyLogo);
     else localStorage.removeItem('wl_company_logo');
   }, [companyLogo]);
+  useEffect(() => {
+    localStorage.setItem('wl_company_header', companyHeader);
+  }, [companyHeader]);
 
   // Actions
   const addProject = (p: Omit<Project, 'id'>) => {
@@ -222,6 +226,7 @@ const App: React.FC = () => {
             predefinedActivities={predefinedActivities} 
             weeklyWorkHours={weeklyWorkHours} 
             companyLogo={companyLogo} 
+            companyHeader={companyHeader}
             onDeleteActivity={deleteActivity} 
             onEditActivity={(a) => setEditingActivity(a)} 
             onNavigateToEntry={() => setView('log')} 
@@ -235,8 +240,10 @@ const App: React.FC = () => {
             projects={projects} 
             activities={activities} 
             companyLogo={companyLogo}
+            companyHeader={companyHeader}
             onUpdateWeeklyHours={setWeeklyWorkHours} 
             onUpdateLogo={setCompanyLogo}
+            onUpdateHeader={setCompanyHeader}
             onAddPredefined={addPredefined} 
             onDeletePredefined={deletePredefined} 
             onImportFullData={importFullData} 
