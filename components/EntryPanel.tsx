@@ -45,18 +45,6 @@ const EntryPanel: React.FC<EntryPanelProps> = ({ projects, activeActivity, activ
   
   const recognitionRef = useRef<any>(null);
 
-  const recentSuggestions = useMemo(() => {
-    const completed = activities.filter(a => a.endTime);
-    const unique = new Map();
-    [...completed].reverse().forEach(a => {
-      const key = `${a.projectId}-${a.activityCode}`;
-      if (!unique.has(key) && unique.size < 5) {
-        unique.set(key, a);
-      }
-    });
-    return Array.from(unique.values());
-  }, [activities]);
-
   useEffect(() => {
     let interval: any;
     if (activeActivity) {
@@ -332,31 +320,6 @@ const EntryPanel: React.FC<EntryPanelProps> = ({ projects, activeActivity, activ
               </div>
             </div>
 
-            {recentSuggestions.length > 0 && (
-              <div className="flex items-center gap-1.5 flex-wrap pt-2">
-                <span className="text-[9px] font-bold text-slate-300 uppercase flex items-center gap-1"><History size={10} /> Recenti:</span>
-                {recentSuggestions.map((sug, i) => {
-                  const project = projects.find(p => p.id === sug.projectId);
-                  return (
-                    <button 
-                      key={i} 
-                      onClick={() => { setProjectId(sug.projectId); setActivityCode(sug.activityCode); setDescription(sug.description); }} 
-                      className="px-3 py-1 bg-slate-50 hover:bg-slate-100 rounded-full text-[9px] font-bold text-slate-500 transition-colors border border-slate-100 tracking-tighter flex items-center gap-1"
-                    >
-                      <span className="text-indigo-600 uppercase">{project?.name || 'Commessa'}</span>
-                      <span className="text-slate-300">|</span>
-                      <span className="font-black">[{sug.activityCode}]</span>
-                      {predefinedActivities.find(pa => pa.code === sug.activityCode) && (
-                        <span className="text-indigo-400 uppercase">
-                          {predefinedActivities.find(pa => pa.code === sug.activityCode)?.description}
-                        </span>
-                      )}
-                      {sug.description && <span className="italic opacity-60 truncate max-w-[100px]">- {sug.description}</span>}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
           </div>
         ) : (
           <div className="space-y-4">
