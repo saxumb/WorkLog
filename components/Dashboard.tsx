@@ -5,6 +5,7 @@ import { Zap, Pencil, Trash2, Clock, History, ClipboardList, Target, Printer, Pl
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
+import { toLocalDateString } from '../services/utils';
 
 interface DashboardProps {
   activities: Activity[];
@@ -18,7 +19,7 @@ interface DashboardProps {
   onNavigateToEntry: () => void;
 }
 
-type RangePreset = 'today' | 'week' | '30days' | 'month' | 'custom';
+type RangePreset = 'today' | 'week' | '30days' | 'month' | 'prevMonth' | 'custom';
 
 const Dashboard: React.FC<DashboardProps> = ({ 
   activities, projects, predefinedActivities, weeklyWorkHours, companyLogo, companyHeader,
@@ -41,12 +42,19 @@ const Dashboard: React.FC<DashboardProps> = ({
 
   useEffect(() => {
     const now = new Date();
-    const today = now.toISOString().split('T')[0];
+    const today = toLocalDateString(now);
     switch (preset) {
       case 'today': setStartDate(today); setEndDate(today); break;
-      case 'week': { const d = new Date(); d.setDate(d.getDate() - 7); setStartDate(d.toISOString().split('T')[0]); setEndDate(today); break; }
-      case '30days': { const d = new Date(); d.setDate(d.getDate() - 30); setStartDate(d.toISOString().split('T')[0]); setEndDate(today); break; }
-      case 'month': { const firstDay = new Date(now.getFullYear(), now.getMonth(), 1); setStartDate(firstDay.toISOString().split('T')[0]); setEndDate(today); break; }
+      case 'week': { const d = new Date(); d.setDate(d.getDate() - 7); setStartDate(toLocalDateString(d)); setEndDate(today); break; }
+      case '30days': { const d = new Date(); d.setDate(d.getDate() - 30); setStartDate(toLocalDateString(d)); setEndDate(today); break; }
+      case 'month': { const firstDay = new Date(now.getFullYear(), now.getMonth(), 1); setStartDate(toLocalDateString(firstDay)); setEndDate(today); break; }
+      case 'prevMonth': { 
+        const firstDay = new Date(now.getFullYear(), now.getMonth() - 1, 1); 
+        const lastDay = new Date(now.getFullYear(), now.getMonth(), 0);
+        setStartDate(toLocalDateString(firstDay)); 
+        setEndDate(toLocalDateString(lastDay)); 
+        break; 
+      }
     }
   }, [preset]);
 
@@ -64,9 +72,10 @@ const Dashboard: React.FC<DashboardProps> = ({
   }, [activities, startDate, endDate, selectedProjectId, selectedActivityCode]);
 
   const groupedActivities = useMemo(() => {
+    const isFiltered = selectedProjectId !== 'all' || selectedActivityCode !== 'all';
     const groups: Record<string, Activity[]> = {};
     filteredActivities.forEach(activity => {
-      const dateKey = activity.startTime.split('T')[0];
+      const dateKey = toLocalDateString(new Date(activity.startTime));
       if (!groups[dateKey]) groups[dateKey] = [];
       groups[dateKey].push(activity);
     });
@@ -76,7 +85,9 @@ const Dashboard: React.FC<DashboardProps> = ({
       const requiredHours = weeklyWorkHours[dayName];
       const totalSeconds = groups[date].reduce((acc, curr) => acc + curr.durationSeconds, 0);
       const totalHours = totalSeconds / 3600;
-      const missingHours = Math.max(0, requiredHours - totalHours);
+      
+      // If filtered by project or activity, we don't calculate missing hours (ROL/FE)
+      const missingHours = isFiltered ? 0 : Math.max(0, requiredHours - totalHours);
       const overtimeHours = Math.max(0, totalHours - requiredHours);
 
       return {
@@ -88,13 +99,14 @@ const Dashboard: React.FC<DashboardProps> = ({
         overtimeHours
       };
     });
-  }, [filteredActivities, weeklyWorkHours]);
+  }, [filteredActivities, weeklyWorkHours, selectedProjectId, selectedActivityCode]);
 
   const stats = useMemo(() => {
+    const isFiltered = selectedProjectId !== 'all' || selectedActivityCode !== 'all';
     const totalSeconds = filteredActivities.reduce((acc, curr) => acc + curr.durationSeconds, 0);
     const dayMap = new Map<string, number>();
     filteredActivities.forEach(a => {
-      const date = a.startTime.split('T')[0];
+      const date = toLocalDateString(new Date(a.startTime));
       dayMap.set(date, (dayMap.get(date) || 0) + a.durationSeconds / 3600);
     });
     
@@ -105,7 +117,7 @@ const Dashboard: React.FC<DashboardProps> = ({
       const dayName = d.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase() as keyof WeeklyWorkHours;
       const limit = weeklyWorkHours[dayName];
       if (hours > limit) overtime += (hours - limit);
-      else if (hours < limit) totalMissingHours += (limit - hours);
+      else if (!isFiltered && hours < limit) totalMissingHours += (limit - hours);
     });
     
     const uniqueProjectIds = new Set(filteredActivities.map(a => a.projectId).filter(Boolean));
@@ -116,7 +128,7 @@ const Dashboard: React.FC<DashboardProps> = ({
       totalMissingHours,
       projectsCount: uniqueProjectIds.size 
     };
-  }, [filteredActivities, weeklyWorkHours]);
+  }, [filteredActivities, weeklyWorkHours, selectedProjectId, selectedActivityCode]);
 
   const handleExportPDF = () => {
     setPendingExport('pdf');
@@ -298,13 +310,13 @@ const Dashboard: React.FC<DashboardProps> = ({
               <div className="space-y-3">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Periodo Temporale</label>
                 <div className="flex flex-wrap gap-1.5 p-1.5 bg-slate-50 rounded-2xl border border-slate-100">
-                  {['today', 'week', '30days', 'month', 'custom'].map((id) => (
+                  {['today', 'week', '30days', 'month', 'prevMonth', 'custom'].map((id) => (
                     <button 
                       key={id} 
                       onClick={() => setPreset(id as RangePreset)} 
                       className={`flex-1 px-3 py-2 rounded-xl text-[9px] font-black uppercase transition-all ${preset === id ? 'bg-white text-indigo-600 shadow-sm border border-slate-100' : 'text-slate-500 hover:text-slate-800'}`}
                     >
-                      {id === 'today' ? 'Oggi' : id === 'week' ? '7g' : id === '30days' ? '30g' : id === 'month' ? 'Mese' : 'Custom'}
+                      {id === 'today' ? 'Oggi' : id === 'week' ? '7g' : id === '30days' ? '30g' : id === 'month' ? 'Mese' : id === 'prevMonth' ? 'Mese Prec.' : 'Custom'}
                     </button>
                   ))}
                 </div>

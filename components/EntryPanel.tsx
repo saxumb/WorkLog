@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Play, Square, Check, Sparkles, Loader2, History, Mic, MicOff, AlertCircle, Tag, Clock, CheckCheck, Plus, Minus } from 'lucide-react';
 import { Project, Activity, PredefinedActivity, WeeklyWorkHours } from '../types';
 import { parseActivityInput } from '../services/geminiService';
+import { toLocalDateString } from '../services/utils';
 
 interface EntryPanelProps {
   projects: Project[];
@@ -20,7 +21,7 @@ const EntryPanel: React.FC<EntryPanelProps> = ({ projects, activeActivity, activ
   const [projectId, setProjectId] = useState('');
   const [activityCode, setActivityCode] = useState('');
   const [description, setDescription] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(toLocalDateString(new Date()));
   
   const defaultDuration = useMemo(() => {
     const d = new Date(date);

@@ -33,6 +33,7 @@ jobs:
       - name: Build
         run: |
           npm run build
+          cp dist/index.html dist/404.html
           touch dist/.nojekyll
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}

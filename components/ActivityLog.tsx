@@ -4,6 +4,7 @@ import { Trash2, FileText, Loader2, Pencil, Calendar, Clock, Zap, Printer } from
 import { Activity, Project } from '../types';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { toLocalDateString } from '../services/utils';
 
 interface ActivityLogProps {
   activities: Activity[];
@@ -48,7 +49,7 @@ const ActivityLog: React.FC<ActivityLogProps> = ({ activities, projects, onDelet
   const groupedActivities = useMemo(() => {
     const groups: Record<string, Activity[]> = {};
     filteredActivities.forEach(activity => {
-      const dateKey = activity.startTime.split('T')[0];
+      const dateKey = toLocalDateString(new Date(activity.startTime));
       if (!groups[dateKey]) groups[dateKey] = [];
       groups[dateKey].push(activity);
     });

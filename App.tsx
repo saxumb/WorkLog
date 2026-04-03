@@ -199,22 +199,6 @@ const App: React.FC = () => {
   return (
     <Layout currentView={view} setView={setView} activeTimerId={activeActivity?.id || null}>
       <div className="space-y-6">
-        <div className="flex p-1.5 bg-slate-200/60 rounded-[20px] w-full">
-          {NAV_ITEMS.map((item) => (
-            <button 
-              key={item.id} 
-              onClick={() => setView(item.id as View)} 
-              className={`flex-1 py-2.5 rounded-[14px] text-xs font-bold uppercase tracking-wider transition-all duration-200 ${
-                view === item.id 
-                  ? 'text-indigo-600' 
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-
         {(activeActivity || view === 'log') && (
           <EntryPanel projects={projects} activeActivity={activeActivity} activities={activities} predefinedActivities={predefinedActivities} weeklyWorkHours={weeklyWorkHours} onStart={startTimer} onStop={stopTimer} onManualAdd={addManualActivity} />
         )}

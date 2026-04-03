@@ -12,42 +12,58 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children, currentView, setView, activeTimerId }) => {
   return (
-    <div className="flex flex-col md:flex-row min-h-screen bg-slate-50">
-      {/* Mobile Header - Semplificato */}
-      <header className="md:hidden bg-white border-b px-4 py-2.5 flex justify-between items-center sticky top-0 z-50">
-        <h1 className="text-lg font-bold text-indigo-600">WorkLog</h1>
-        {activeTimerId && (
-          <div className="flex items-center gap-2 px-3 py-1 bg-rose-50 text-rose-600 rounded-full animate-pulse border border-rose-200">
-            <span className="w-1.5 h-1.5 bg-rose-500 rounded-full"></span>
-            <span className="text-[10px] font-bold uppercase tracking-tight">Live</span>
+    <div className="min-h-screen bg-slate-50">
+      {/* Unified Top Navigation */}
+      <header className="bg-white border-b sticky top-0 z-50 shadow-sm">
+        <div className={`max-w-7xl mx-auto px-4 md:px-8 flex items-center justify-between ${!activeTimerId ? 'hidden md:flex' : 'flex'}`}>
+          <div className="flex items-center gap-6 py-2 md:py-4">
+            {/* Desktop Menu */}
+            <nav className="hidden md:flex items-center gap-1 bg-slate-100/80 p-1 rounded-2xl">
+              {NAV_ITEMS.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => setView(item.id as View)}
+                  className={`px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                    currentView === item.id 
+                      ? 'bg-white text-indigo-600 shadow-sm' 
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </nav>
           </div>
-        )}
-      </header>
 
-      {/* Sidebar (Desktop) */}
-      <nav className="hidden md:flex flex-col w-64 bg-white border-r h-screen sticky top-0">
-        <div className="p-6">
-          <h1 className="text-2xl font-bold text-indigo-600">WorkLog</h1>
-          <p className="text-xs text-slate-400 font-medium mt-1 uppercase tracking-wider">Timesheet Manager</p>
+          <div className="flex items-center gap-4">
+            {activeTimerId && (
+              <div className="flex items-center gap-2 px-3 py-1 bg-rose-50 text-rose-600 rounded-full animate-pulse border border-rose-200">
+                <span className="w-1.5 h-1.5 bg-rose-500 rounded-full"></span>
+                <span className="text-[10px] font-bold uppercase tracking-tight">Live</span>
+              </div>
+            )}
+          </div>
         </div>
-        <div className="flex-1 px-3 space-y-1">
+
+        {/* Mobile Menu */}
+        <div className={`md:hidden flex items-center justify-around p-1 bg-slate-50/50 ${activeTimerId ? 'border-t' : ''}`}>
           {NAV_ITEMS.map((item) => (
             <button
               key={item.id}
               onClick={() => setView(item.id as View)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-                currentView === item.id ? 'text-indigo-600 font-bold' : 'text-slate-500 hover:bg-slate-50'
+              className={`flex-1 py-2 rounded-xl flex flex-col items-center gap-0.5 transition-all ${
+                currentView === item.id ? 'text-indigo-600' : 'text-slate-400'
               }`}
             >
-              {item.icon}
-              {item.label}
+              {React.cloneElement(item.icon as React.ReactElement, { size: 18 })}
+              <span className="text-[8px] font-black uppercase tracking-tighter">{item.label}</span>
             </button>
           ))}
         </div>
-      </nav>
+      </header>
 
       {/* Main Content */}
-      <main className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full">
+      <main className="p-4 md:p-8 max-w-7xl mx-auto w-full">
         {children}
       </main>
     </div>

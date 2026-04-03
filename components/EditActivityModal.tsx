@@ -2,6 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { X, Check, Clock, Plus, Minus } from 'lucide-react';
 import { Activity, Project, PredefinedActivity } from '../types';
+import { toLocalDateString } from '../services/utils';
 
 interface EditActivityModalProps {
   activity: Activity;
@@ -15,7 +16,7 @@ const EditActivityModal: React.FC<EditActivityModalProps> = ({ activity, project
   const [projectId, setProjectId] = useState(activity.projectId);
   const [activityCode, setActivityCode] = useState(activity.activityCode);
   const [description, setDescription] = useState(activity.description);
-  const [date, setDate] = useState(new Date(activity.startTime).toISOString().split('T')[0]);
+  const [date, setDate] = useState(toLocalDateString(new Date(activity.startTime)));
   const [inputHours, setInputHours] = useState<number | string>(Math.floor(activity.durationSeconds / 3600));
   const [inputMinutes, setInputMinutes] = useState<number | string>(Math.round((activity.durationSeconds % 3600) / 60));
 
