@@ -165,11 +165,11 @@ const App: React.FC = () => {
     }));
   };
 
-  const addManualActivity = (projectId: string, activityCode: string, description: string, dateStr: string, durationSeconds: number) => {
+  const addManualActivity = (projectId: string, activityCode: string, description: string, dateStr: string, durationSeconds: number, type?: 'work' | 'vacation' | 'sick') => {
     const date = new Date(dateStr); date.setHours(18, 0, 0);
     const endTime = date.toISOString();
     const startTime = new Date(date.getTime() - durationSeconds * 1000).toISOString();
-    const newActivity: Activity = { id: Date.now().toString(), projectId, activityCode, description, startTime, endTime, durationSeconds };
+    const newActivity: Activity = { id: Date.now().toString(), projectId, activityCode, description, startTime, endTime, durationSeconds, type: type || 'work' };
     setActivities(prev => [...prev, newActivity]);
   };
 
@@ -213,6 +213,7 @@ const App: React.FC = () => {
             companyHeader={companyHeader}
             onDeleteActivity={deleteActivity} 
             onEditActivity={(a) => setEditingActivity(a)} 
+            onAddActivity={addManualActivity}
             onNavigateToEntry={() => setView('log')} 
           />
         )}

@@ -20,6 +20,7 @@ export interface Activity {
   startTime: string; // ISO string
   endTime: string | null; // ISO string or null if running
   durationSeconds: number; // calculated or manual
+  type?: 'work' | 'vacation' | 'sick';
 }
 
 export type View = 'dashboard' | 'log' | 'projects' | 'options';

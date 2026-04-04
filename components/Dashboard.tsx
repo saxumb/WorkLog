@@ -16,6 +16,7 @@ interface DashboardProps {
   companyHeader: string;
   onDeleteActivity: (id: string) => void;
   onEditActivity: (activity: Activity) => void;
+  onAddActivity: (projectId: string, activityCode: string, description: string, date: string, durationSeconds: number, type?: 'work' | 'vacation' | 'sick') => void;
   onNavigateToEntry: () => void;
 }
 
@@ -23,7 +24,7 @@ type RangePreset = 'today' | 'week' | '30days' | 'month' | 'prevMonth' | 'custom
 
 const Dashboard: React.FC<DashboardProps> = ({ 
   activities, projects, predefinedActivities, weeklyWorkHours, companyLogo, companyHeader,
-  onDeleteActivity, onEditActivity, onNavigateToEntry 
+  onDeleteActivity, onEditActivity, onAddActivity, onNavigateToEntry 
 }) => {
   const [preset, setPreset] = useState<RangePreset>('month');
   const [startDate, setStartDate] = useState<string>('');
@@ -84,11 +85,14 @@ const Dashboard: React.FC<DashboardProps> = ({
       const dayName = d.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase() as keyof WeeklyWorkHours;
       const requiredHours = weeklyWorkHours[dayName];
       const totalSeconds = groups[date].reduce((acc, curr) => acc + curr.durationSeconds, 0);
-      const totalHours = totalSeconds / 3600;
+      const workSeconds = groups[date].filter(a => a.type !== 'vacation' && a.type !== 'sick').reduce((acc, curr) => acc + curr.durationSeconds, 0);
+      const sickSeconds = groups[date].filter(a => a.type === 'sick').reduce((acc, curr) => acc + curr.durationSeconds, 0);
+      const workHours = workSeconds / 3600;
+      const sickHours = sickSeconds / 3600;
       
       // If filtered by project or activity, we don't calculate missing hours (ROL/FE)
-      const missingHours = isFiltered ? 0 : Math.max(0, requiredHours - totalHours);
-      const overtimeHours = Math.max(0, totalHours - requiredHours);
+      const missingHours = isFiltered ? 0 : Math.max(0, requiredHours - workHours - sickHours);
+      const overtimeHours = Math.max(0, workHours - requiredHours);
 
       return {
         date,
@@ -96,7 +100,8 @@ const Dashboard: React.FC<DashboardProps> = ({
         totalSeconds,
         requiredHours,
         missingHours,
-        overtimeHours
+        overtimeHours,
+        sickHours
       };
     });
   }, [filteredActivities, weeklyWorkHours, selectedProjectId, selectedActivityCode]);
@@ -104,21 +109,50 @@ const Dashboard: React.FC<DashboardProps> = ({
   const stats = useMemo(() => {
     const isFiltered = selectedProjectId !== 'all' || selectedActivityCode !== 'all';
     const totalSeconds = filteredActivities.reduce((acc, curr) => acc + curr.durationSeconds, 0);
-    const dayMap = new Map<string, number>();
+    const dayMap = new Map<string, { hours: number, vacation: number, sick: number }>();
+    
     filteredActivities.forEach(a => {
       const date = toLocalDateString(new Date(a.startTime));
-      dayMap.set(date, (dayMap.get(date) || 0) + a.durationSeconds / 3600);
+      const current = dayMap.get(date) || { hours: 0, vacation: 0, sick: 0 };
+      if (a.type === 'vacation') current.vacation += a.durationSeconds / 3600;
+      else if (a.type === 'sick') current.sick += a.durationSeconds / 3600;
+      else current.hours += a.durationSeconds / 3600;
+      dayMap.set(date, current);
     });
     
     let overtime = 0;
     let totalMissingHours = 0;
-    dayMap.forEach((hours, dateStr) => {
-      const d = new Date(dateStr);
-      const dayName = d.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase() as keyof WeeklyWorkHours;
-      const limit = weeklyWorkHours[dayName];
-      if (hours > limit) overtime += (hours - limit);
-      else if (!isFiltered && hours < limit) totalMissingHours += (limit - hours);
-    });
+    let totalVacationHours = 0;
+    let totalSickHours = 0;
+
+    if (startDate && endDate && !isFiltered) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const current = new Date(start);
+      
+      while (current <= end) {
+        const dateStr = toLocalDateString(current);
+        const dayName = current.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase() as keyof WeeklyWorkHours;
+        const limit = weeklyWorkHours[dayName];
+        const data = dayMap.get(dateStr) || { hours: 0, vacation: 0, sick: 0 };
+        const hasActivity = data.hours > 0 || data.vacation > 0 || data.sick > 0;
+        
+        if (hasActivity) {
+          if (data.hours > limit) overtime += (data.hours - limit);
+          else totalMissingHours += Math.max(0, limit - data.hours - data.sick);
+        }
+        
+        totalVacationHours += data.vacation;
+        totalSickHours += data.sick;
+        
+        current.setDate(current.getDate() + 1);
+      }
+    } else {
+      dayMap.forEach((data) => {
+        totalVacationHours += data.vacation;
+        totalSickHours += data.sick;
+      });
+    }
     
     const uniqueProjectIds = new Set(filteredActivities.map(a => a.projectId).filter(Boolean));
     
@@ -126,9 +160,50 @@ const Dashboard: React.FC<DashboardProps> = ({
       totalHours: totalSeconds / 3600, 
       overtime, 
       totalMissingHours,
+      totalVacationHours,
+      totalSickHours,
       projectsCount: uniqueProjectIds.size 
     };
   }, [filteredActivities, weeklyWorkHours, selectedProjectId, selectedActivityCode]);
+
+  const missingDays = useMemo(() => {
+    if (!startDate || !endDate || selectedProjectId !== 'all' || selectedActivityCode !== 'all') return [];
+    
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const days: string[] = [];
+    const current = new Date(start);
+    
+    while (current <= end) {
+      const dateStr = toLocalDateString(current);
+      const dayName = current.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase() as keyof WeeklyWorkHours;
+      const required = weeklyWorkHours[dayName];
+      
+      if (required > 0) {
+        const hasActivity = activities.some(a => toLocalDateString(new Date(a.startTime)) === dateStr);
+        if (!hasActivity) {
+          days.push(dateStr);
+        }
+      }
+      current.setDate(current.getDate() + 1);
+    }
+    return days;
+  }, [startDate, endDate, activities, weeklyWorkHours, selectedProjectId, selectedActivityCode]);
+
+  const handleMarkDay = (date: string, type: 'vacation' | 'sick') => {
+    const d = new Date(date);
+    const dayName = d.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase() as keyof WeeklyWorkHours;
+    const hours = weeklyWorkHours[dayName];
+    
+    onAddActivity(
+      '',
+      type === 'vacation' ? 'FERIE' : 'MALATTIA',
+      type === 'vacation' ? 'Ferie' : 'Malattia',
+      date,
+      hours * 3600,
+      type
+    );
+  };
 
   const handleExportPDF = () => {
     setPendingExport('pdf');
@@ -381,57 +456,80 @@ const Dashboard: React.FC<DashboardProps> = ({
         <div className="bg-white rounded-[2rem] border border-slate-200 shadow-sm flex flex-col md:flex-row items-stretch md:items-center divide-y md:divide-y-0 md:divide-x divide-slate-100 overflow-hidden">
           
           {/* Stat Item 1 */}
-          <div className="flex-1 flex items-center gap-4 px-8 py-5 group hover:bg-slate-50 transition-colors">
-            <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-2xl group-hover:scale-110 transition-transform">
-              <Clock size={20} />
-            </div>
-            <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Tempo Totale</p>
-              <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-black text-slate-800">{formatHHMM(stats.totalHours)}</span>
+          {stats.totalHours > 0 && (
+            <div className="flex-1 flex items-center gap-4 px-8 py-5 group hover:bg-slate-50 transition-colors">
+              <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-2xl group-hover:scale-110 transition-transform">
+                <Clock size={20} />
+              </div>
+              <div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Tempo Totale</p>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-2xl font-black text-slate-800">{formatHHMM(stats.totalHours)}</span>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Stat Item 2 */}
-          <div className="flex-1 flex items-center gap-4 px-8 py-5 group hover:bg-slate-50 transition-colors">
-            <div className="p-2.5 bg-amber-50 text-amber-600 rounded-2xl group-hover:scale-110 transition-transform">
-              <Zap size={20} />
-            </div>
-            <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Straordinari</p>
-              <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-black text-amber-500">{formatHHMM(stats.overtime)}</span>
+          {stats.overtime > 0 && (
+            <div className="flex-1 flex items-center gap-4 px-8 py-5 group hover:bg-slate-50 transition-colors">
+              <div className="p-2.5 bg-amber-50 text-amber-600 rounded-2xl group-hover:scale-110 transition-transform">
+                <Zap size={20} />
+              </div>
+              <div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Straordinari</p>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-2xl font-black text-amber-500">{formatHHMM(stats.overtime)}</span>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Stat Item 3 */}
-          <div className="flex-1 flex items-center gap-4 px-8 py-5 group hover:bg-slate-50 transition-colors">
-            <div className="p-2.5 bg-rose-50 text-rose-600 rounded-2xl group-hover:scale-110 transition-transform">
-              <History size={20} />
-            </div>
-            <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">ROL/FE</p>
-              <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-black text-rose-500">{formatHHMM(stats.totalMissingHours)}</span>
+          {stats.totalMissingHours > 0 && (
+            <div className="flex-1 flex items-center gap-4 px-8 py-5 group hover:bg-slate-50 transition-colors">
+              <div className="p-2.5 bg-rose-50 text-rose-600 rounded-2xl group-hover:scale-110 transition-transform">
+                <History size={20} />
+              </div>
+              <div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">ROL/FE</p>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-2xl font-black text-rose-500">{formatHHMM(stats.totalMissingHours)}</span>
+                </div>
               </div>
             </div>
-          </div>
+          )}
+
+          {/* Sick Leave Stat (Conditional) */}
+          {stats.totalSickHours > 0 && (
+            <div className="flex-1 flex items-center gap-4 px-8 py-5 group hover:bg-slate-50 transition-colors">
+              <div className="p-2.5 bg-purple-50 text-purple-600 rounded-2xl group-hover:scale-110 transition-transform">
+                <Zap size={20} />
+              </div>
+              <div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Malattia</p>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-2xl font-black text-purple-500">{formatHHMM(stats.totalSickHours)}</span>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Stat Item 4 */}
-          <div className="flex-1 flex items-center gap-4 px-8 py-5 group hover:bg-slate-50 transition-colors">
-            <div className="p-2.5 bg-slate-50 text-slate-600 rounded-2xl group-hover:scale-110 transition-transform">
-              <Target size={20} />
-            </div>
-            <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Commesse</p>
-              <div className="flex items-baseline gap-1">
-                <span className="text-2xl font-black text-slate-800">{stats.projectsCount}</span>
-                <span className="text-[10px] font-bold text-slate-400 uppercase ml-2 tracking-tighter">Progetti</span>
+          {stats.projectsCount > 0 && (
+            <div className="flex-1 flex items-center gap-4 px-8 py-5 group hover:bg-slate-50 transition-colors">
+              <div className="p-2.5 bg-slate-50 text-slate-600 rounded-2xl group-hover:scale-110 transition-transform">
+                <Target size={20} />
+              </div>
+              <div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Commesse</p>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-2xl font-black text-slate-800">{stats.projectsCount}</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase ml-2 tracking-tighter">Progetti</span>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Report CTA in-line if screen is large enough */}
           <div className="p-5 flex flex-wrap items-center justify-center bg-slate-50/50 gap-2">
@@ -475,6 +573,46 @@ const Dashboard: React.FC<DashboardProps> = ({
         </div>
 
         <div className="p-3 md:p-6 space-y-2">
+          {/* Missing Days Prompt */}
+          {missingDays.length > 0 && (
+            <div className="mb-6 space-y-3">
+              <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-700 rounded-2xl border border-amber-100">
+                <History size={16} />
+                <span className="text-[10px] font-black uppercase tracking-tight">Giorni senza attività rilevati</span>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {missingDays.map(date => (
+                  <div key={date} className="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm flex flex-col gap-3">
+                    <div className="flex justify-between items-start">
+                      <span className="text-[11px] font-black text-slate-800 uppercase">{formatDateLabel(date)}</span>
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{weeklyWorkHours[new Date(date).toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase() as keyof WeeklyWorkHours]} ore previste</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => handleMarkDay(date, 'vacation')}
+                        className="flex-1 py-2 bg-emerald-50 text-emerald-600 text-[9px] font-black uppercase rounded-xl hover:bg-emerald-100 transition-colors"
+                      >
+                        Ferie
+                      </button>
+                      <button 
+                        onClick={() => handleMarkDay(date, 'sick')}
+                        className="flex-1 py-2 bg-purple-50 text-purple-600 text-[9px] font-black uppercase rounded-xl hover:bg-purple-100 transition-colors"
+                      >
+                        Malattia
+                      </button>
+                      <button 
+                        onClick={onNavigateToEntry}
+                        className="flex-1 py-2 bg-slate-50 text-slate-600 text-[9px] font-black uppercase rounded-xl hover:bg-slate-100 transition-colors"
+                      >
+                        Aggiungi
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {groupedActivities.map((group) => (
             <div key={group.date} className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden transition-all">
               <button 
@@ -502,6 +640,14 @@ const Dashboard: React.FC<DashboardProps> = ({
                       <div className="h-6 w-px bg-slate-100 hidden md:block"></div>
                       <div className="flex flex-col items-center justify-center w-16 md:w-20">
                         <span className="text-[11px] md:text-xs font-black text-amber-500 text-center">+{formatHHMM(group.overtimeHours)}</span>
+                      </div>
+                    </>
+                  )}
+                  {group.sickHours > 0 && (
+                    <>
+                      <div className="h-6 w-px bg-slate-100 hidden md:block"></div>
+                      <div className="flex flex-col items-center justify-center w-16 md:w-20">
+                        <span className="text-[11px] md:text-xs font-black text-purple-500 text-center">-{formatHHMM(group.sickHours)}</span>
                       </div>
                     </>
                   )}
