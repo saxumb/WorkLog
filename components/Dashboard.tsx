@@ -5,7 +5,7 @@ import { Zap, Pencil, Trash2, Clock, History, ClipboardList, Target, Printer, Pl
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
-import { toLocalDateString } from '../services/utils';
+import { toLocalDateString, isHoliday } from '../services/utils';
 
 interface DashboardProps {
   activities: Activity[];
@@ -83,7 +83,8 @@ const Dashboard: React.FC<DashboardProps> = ({
     return Object.keys(groups).sort((a, b) => b.localeCompare(a)).map(date => {
       const d = new Date(date);
       const dayName = d.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase() as keyof WeeklyWorkHours;
-      const requiredHours = weeklyWorkHours[dayName];
+      const isDayHoliday = isHoliday(d);
+      const requiredHours = isDayHoliday ? 0 : weeklyWorkHours[dayName];
       const totalSeconds = groups[date].reduce((acc, curr) => acc + curr.durationSeconds, 0);
       const workSeconds = groups[date].filter(a => a.type !== 'vacation' && a.type !== 'sick').reduce((acc, curr) => acc + curr.durationSeconds, 0);
       const sickSeconds = groups[date].filter(a => a.type === 'sick').reduce((acc, curr) => acc + curr.durationSeconds, 0);
@@ -133,7 +134,8 @@ const Dashboard: React.FC<DashboardProps> = ({
       while (current <= end) {
         const dateStr = toLocalDateString(current);
         const dayName = current.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase() as keyof WeeklyWorkHours;
-        const limit = weeklyWorkHours[dayName];
+        const isDayHoliday = isHoliday(current);
+        const limit = isDayHoliday ? 0 : weeklyWorkHours[dayName];
         const data = dayMap.get(dateStr) || { hours: 0, vacation: 0, sick: 0 };
         const hasActivity = data.hours > 0 || data.vacation > 0 || data.sick > 0;
         
@@ -177,7 +179,8 @@ const Dashboard: React.FC<DashboardProps> = ({
     while (current <= end) {
       const dateStr = toLocalDateString(current);
       const dayName = current.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase() as keyof WeeklyWorkHours;
-      const required = weeklyWorkHours[dayName];
+      const isDayHoliday = isHoliday(current);
+      const required = isDayHoliday ? 0 : weeklyWorkHours[dayName];
       
       if (required > 0) {
         const hasActivity = activities.some(a => toLocalDateString(new Date(a.startTime)) === dateStr);
@@ -193,7 +196,8 @@ const Dashboard: React.FC<DashboardProps> = ({
   const handleMarkDay = (date: string, type: 'vacation' | 'sick') => {
     const d = new Date(date);
     const dayName = d.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase() as keyof WeeklyWorkHours;
-    const hours = weeklyWorkHours[dayName];
+    const isDayHoliday = isHoliday(d);
+    const hours = isDayHoliday ? 0 : weeklyWorkHours[dayName];
     
     onAddActivity(
       '',
