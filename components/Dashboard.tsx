@@ -17,7 +17,7 @@ interface DashboardProps {
   onDeleteActivity: (id: string) => void;
   onEditActivity: (activity: Activity) => void;
   onAddActivity: (projectId: string, activityCode: string, description: string, date: string, durationSeconds: number, type?: 'work' | 'vacation' | 'sick') => void;
-  onNavigateToEntry: () => void;
+  onNavigateToEntry: (date?: string) => void;
 }
 
 type RangePreset = 'today' | 'week' | '30days' | 'month' | 'prevMonth' | 'custom';
@@ -342,7 +342,7 @@ const Dashboard: React.FC<DashboardProps> = ({
       
       {/* New Activity Button */}
       <button 
-        onClick={onNavigateToEntry}
+        onClick={() => onNavigateToEntry(toLocalDateString(new Date()))}
         className="w-full py-6 bg-indigo-600 hover:bg-indigo-700 text-white rounded-[2rem] shadow-xl shadow-indigo-100 flex items-center justify-center gap-4 transition-all group overflow-hidden relative"
       >
         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
@@ -605,7 +605,7 @@ const Dashboard: React.FC<DashboardProps> = ({
                         Malattia
                       </button>
                       <button 
-                        onClick={onNavigateToEntry}
+                        onClick={() => onNavigateToEntry(date)}
                         className="flex-1 py-2 bg-slate-50 text-slate-600 text-[9px] font-black uppercase rounded-xl hover:bg-slate-100 transition-colors"
                       >
                         Aggiungi

@@ -14,14 +14,24 @@ interface EntryPanelProps {
   onStart: (projectId: string, activityCode: string, description: string) => void;
   onStop: () => void;
   onManualAdd: (projectId: string, activityCode: string, description: string, date: string, durationSeconds: number) => void;
+  initialDate?: string | null;
 }
 
-const EntryPanel: React.FC<EntryPanelProps> = ({ projects, activeActivity, activities, predefinedActivities, weeklyWorkHours, onStart, onStop, onManualAdd }) => {
+const EntryPanel: React.FC<EntryPanelProps> = ({ projects, activeActivity, activities, predefinedActivities, weeklyWorkHours, onStart, onStop, onManualAdd, initialDate }) => {
   const [mode, setMode] = useState<'manual' | 'smart' | 'timer'>('manual');
   const [projectId, setProjectId] = useState('');
   const [activityCode, setActivityCode] = useState('');
   const [description, setDescription] = useState('');
-  const [date, setDate] = useState(toLocalDateString(new Date()));
+  const [date, setDate] = useState(initialDate || toLocalDateString(new Date()));
+
+  useEffect(() => {
+    if (initialDate) {
+      setDate(initialDate);
+      setMode('manual');
+    } else {
+      setDate(toLocalDateString(new Date()));
+    }
+  }, [initialDate]);
   
   const defaultDuration = useMemo(() => {
     const d = new Date(date);

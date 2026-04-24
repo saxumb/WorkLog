@@ -9,6 +9,7 @@ import EditActivityModal from './components/EditActivityModal';
 import ConfirmModal from './components/ConfirmModal';
 import { Activity, Project, View, PredefinedActivity, WeeklyWorkHours } from './types';
 import { NAV_ITEMS, COLORS } from './constants';
+import { toLocalDateString } from './services/utils';
 
 const INITIAL_PROJECTS: Project[] = [
   { id: '1', name: 'Sviluppo Web Interno', client: 'Azienda X', color: 'bg-blue-500' },
@@ -73,6 +74,7 @@ const App: React.FC = () => {
   const [companyHeader, setCompanyHeader] = useState<string>(() => localStorage.getItem('wl_company_header') || '');
 
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [confirmConfig, setConfirmConfig] = useState<{
     isOpen: boolean;
     title: string;
@@ -194,13 +196,23 @@ const App: React.FC = () => {
     }
   };
 
+  const navigateToLog = (date?: string) => {
+    setSelectedDate(date || null);
+    setView('log');
+  };
+
+  const handleSetView = (newView: View) => {
+    setSelectedDate(newView === 'log' ? toLocalDateString(new Date()) : null);
+    setView(newView);
+  };
+
   const activeActivity = activities.find(a => !a.endTime) || null;
 
   return (
-    <Layout currentView={view} setView={setView} activeTimerId={activeActivity?.id || null}>
+    <Layout currentView={view} setView={handleSetView} activeTimerId={activeActivity?.id || null}>
       <div className="space-y-6">
         {(activeActivity || view === 'log') && (
-          <EntryPanel projects={projects} activeActivity={activeActivity} activities={activities} predefinedActivities={predefinedActivities} weeklyWorkHours={weeklyWorkHours} onStart={startTimer} onStop={stopTimer} onManualAdd={addManualActivity} />
+          <EntryPanel initialDate={selectedDate} projects={projects} activeActivity={activeActivity} activities={activities} predefinedActivities={predefinedActivities} weeklyWorkHours={weeklyWorkHours} onStart={startTimer} onStop={stopTimer} onManualAdd={addManualActivity} />
         )}
 
         {view === 'dashboard' && (
@@ -214,7 +226,7 @@ const App: React.FC = () => {
             onDeleteActivity={deleteActivity} 
             onEditActivity={(a) => setEditingActivity(a)} 
             onAddActivity={addManualActivity}
-            onNavigateToEntry={() => setView('log')} 
+            onNavigateToEntry={navigateToLog} 
           />
         )}
         {view === 'projects' && <ProjectManager projects={projects} onAdd={addProject} onDelete={deleteProject} onUpdate={updateProject} />}
